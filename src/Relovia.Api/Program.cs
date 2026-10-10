@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Common.Errors;
 using Relovia.Api.Common.Health;
 using Relovia.Api.Common.Persistence;
+using Scalar.AspNetCore;
 
 // Some container hosts, including Render, inject PORT. The image default is 8080.
 var port = Environment.GetEnvironmentVariable("PORT");
@@ -53,6 +54,19 @@ builder.Services.AddControllers()
         options.InvalidModelStateResponseFactory = ApiValidation.InvalidModelState;
     });
 
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddOpenApi(options =>
+    {
+        options.AddDocumentTransformer((document, _, _) =>
+        {
+            document.Info.Title = "Relovia";
+            document.Info.Version = "v1";
+            return Task.CompletedTask;
+        });
+    });
+}
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -63,5 +77,11 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = HealthCheckResponseWriter.WriteAsync
 });
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
 
 app.Run();
