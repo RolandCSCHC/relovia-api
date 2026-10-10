@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -85,9 +86,10 @@ builder.Services.AddOptions<SessionSettings>()
     .ValidateOnStart();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IAuthSessionStore, AuthSessionStore>();
+builder.Services.AddScoped<ExternalAccountService>();
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
-builder.Services.AddAuthentication(options =>
+var authentication = builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = SessionAuthenticationDefaults.Scheme;
         options.DefaultAuthenticateScheme = SessionAuthenticationDefaults.Scheme;
@@ -98,6 +100,28 @@ builder.Services.AddAuthentication(options =>
     .AddScheme<AuthenticationSchemeOptions, SessionAuthenticationHandler>(
         SessionAuthenticationDefaults.Scheme,
         _ => { });
+
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
+{
+    authentication.AddGoogle(options =>
+    {
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
+        options.CallbackPath = "/api/auth/google/callback";
+        options.SignInScheme = SessionAuthenticationDefaults.Scheme;
+        options.SaveTokens = false;
+        options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+        options.CorrelationCookie.SecurePolicy = securePolicy;
+        options.CorrelationCookie.HttpOnly = true;
+        options.ClaimActions.MapJsonKey(GoogleIdentityReader.SubjectClaim, "sub");
+        options.ClaimActions.MapJsonKey(GoogleIdentityReader.EmailVerifiedClaim, "email_verified");
+        options.ClaimActions.MapJsonKey(GoogleIdentityReader.PictureClaim, "picture");
+        options.Events.OnTicketReceived = GoogleSignIn.OnTicketReceived;
+        options.Events.OnRemoteFailure = GoogleSignIn.OnRemoteFailure;
+    });
+}
 builder.Services.AddAuthorization();
 builder.Services.AddAntiforgery(options =>
 {
