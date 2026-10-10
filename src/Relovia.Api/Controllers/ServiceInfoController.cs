@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Relovia.Api.Controllers;
 
 [ApiController]
+[AllowAnonymous]
 public sealed class ServiceInfoController : ControllerBase
 {
     [HttpGet("/")]

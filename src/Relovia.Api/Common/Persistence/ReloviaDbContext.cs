@@ -1,10 +1,14 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Features.Identity;
 
 namespace Relovia.Api.Common.Persistence;
 
-public sealed class ReloviaDbContext(DbContextOptions<ReloviaDbContext> options) : DbContext(options)
+public sealed class ReloviaDbContext(DbContextOptions<ReloviaDbContext> options)
+    : DbContext(options), IDataProtectionKeyContext
 {
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
     public DbSet<User> Users => Set<User>();
 
     public DbSet<ExternalLogin> ExternalLogins => Set<ExternalLogin>();
