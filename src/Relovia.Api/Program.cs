@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.DataProtection;
@@ -11,6 +12,7 @@ using Relovia.Api.Common.Health;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
 using Relovia.Api.Features.Identity;
+using Relovia.Api.Features.Relocations;
 using Scalar.AspNetCore;
 
 // Some container hosts, including Render, inject PORT. The image default is 8080.
@@ -87,6 +89,7 @@ builder.Services.AddOptions<SessionSettings>()
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IAuthSessionStore, AuthSessionStore>();
 builder.Services.AddScoped<ExternalAccountService>();
+builder.Services.AddScoped<RelocationService>();
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
 var authentication = builder.Services.AddAuthentication(options =>
@@ -162,6 +165,11 @@ builder.Services.AddControllers(options =>
         options.Filters.Add(new AuthorizeFilter());
         options.Filters.Add<ValidateAntiforgeryFilter>();
     })
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false));
+    })
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = ApiValidation.InvalidModelState;
@@ -209,3 +217,5 @@ if (app.Environment.IsDevelopment())
 }
 
 app.Run();
+
+public partial class Program;

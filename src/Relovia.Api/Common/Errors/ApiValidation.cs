@@ -19,4 +19,20 @@ public static class ApiValidation
             ContentTypes = { "application/problem+json" }
         };
     }
+
+    public static ActionResult Invalid(HttpContext httpContext, IReadOnlyDictionary<string, string[]> errors)
+    {
+        var problem = new ValidationProblemDetails(new Dictionary<string, string[]>(errors))
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "One or more validation errors occurred.",
+            Instance = httpContext.Request.Path,
+        };
+        problem.Extensions["traceId"] = httpContext.TraceIdentifier;
+
+        return new BadRequestObjectResult(problem)
+        {
+            ContentTypes = { "application/problem+json" },
+        };
+    }
 }

@@ -11,27 +11,27 @@ public sealed class RelocationConfiguration : IEntityTypeConfiguration<Relocatio
         builder.HasKey(relocation => relocation.Id);
 
         builder.Property(relocation => relocation.Name)
-            .HasMaxLength(200)
+            .HasMaxLength(RelocationRules.NameMaxLength)
             .IsRequired()
             .HasConversion(name => name.Trim(), name => name);
 
         builder.Property(relocation => relocation.OriginCountryCode)
-            .HasMaxLength(2)
+            .HasMaxLength(RelocationRules.CountryCodeLength)
             .IsRequired()
             .HasConversion(code => CountryCodes.Normalize(code), code => code);
 
         builder.Property(relocation => relocation.DestinationCountryCode)
-            .HasMaxLength(2)
+            .HasMaxLength(RelocationRules.CountryCodeLength)
             .IsRequired()
             .HasConversion(code => CountryCodes.Normalize(code), code => code);
 
         builder.Property(relocation => relocation.OriginCity)
-            .HasMaxLength(200)
+            .HasMaxLength(RelocationRules.CityMaxLength)
             .IsRequired()
             .HasConversion(city => city.Trim(), city => city);
 
         builder.Property(relocation => relocation.DestinationCity)
-            .HasMaxLength(200)
+            .HasMaxLength(RelocationRules.CityMaxLength)
             .IsRequired()
             .HasConversion(city => city.Trim(), city => city);
 

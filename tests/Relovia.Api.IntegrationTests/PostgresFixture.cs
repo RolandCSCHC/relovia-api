@@ -15,9 +15,16 @@ public sealed class PostgresFixture : IAsyncLifetime
         .WithPassword("relovia")
         .Build();
 
+    public string ConnectionString { get; private set; } = string.Empty;
+
     public async Task InitializeAsync()
     {
         await _container.StartAsync();
+        ConnectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
+        {
+            SslMode = SslMode.Disable,
+        }.ConnectionString;
+
         await using var db = CreateContext();
         await db.Database.MigrateAsync();
     }
@@ -29,13 +36,8 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public ReloviaDbContext CreateContext()
     {
-        var connectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
-        {
-            SslMode = SslMode.Disable,
-        }.ConnectionString;
-
         var options = new DbContextOptionsBuilder<ReloviaDbContext>()
-            .UseNpgsql(connectionString, npgsql => npgsql.SetPostgresVersion(18, 0))
+            .UseNpgsql(ConnectionString, npgsql => npgsql.SetPostgresVersion(18, 0))
             .UseSnakeCaseNamingConvention()
             .Options;
 

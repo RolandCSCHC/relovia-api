@@ -54,6 +54,8 @@ Unexpected failures and validation errors use Problem Details. Outside Developme
 
 Endpoints require an authenticated session unless they opt out. `GET /api/auth/google` starts sign-in, `GET /api/auth/me` returns the current user, and `POST /api/auth/logout` revokes the session.
 
+`/api/relocations` lists, reads, creates, updates, and deletes relocations for the signed-in user. Another user's relocation is not found. Purpose and status are the names `Work`, `Study`, `Family`, `Lifestyle`, `Other` and `Draft`, `Active`, `Completed`, `Archived`. The response includes `isInternational`, which is true when the country codes differ.
+
 ## Hosts
 
 | | Address |
