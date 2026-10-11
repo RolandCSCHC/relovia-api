@@ -51,8 +51,9 @@ public sealed class UserPersistenceTests : IClassFixture<PostgresFixture>
             Assert.Equal(createdAt, stored.CreatedAt);
             Assert.Equal(stored.CreatedAt, stored.UpdatedAt);
 
-            // Timestamps use the host clock. Wait until it moves so the update is visible.
-            while (DateTimeOffset.UtcNow <= createdAt)
+            // Timestamps are stored as microseconds. Wait until the clock enters the next one.
+            var nextMicrosecond = createdAt.AddTicks(TimeSpan.TicksPerMicrosecond);
+            while (DateTimeOffset.UtcNow < nextMicrosecond)
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(1));
             }

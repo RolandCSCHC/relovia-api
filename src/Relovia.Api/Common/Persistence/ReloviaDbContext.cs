@@ -36,7 +36,8 @@ public sealed class ReloviaDbContext(DbContextOptions<ReloviaDbContext> options)
 
     private void ApplyTimestamps()
     {
-        var utcNow = DateTimeOffset.UtcNow;
+        // timestamptz stores microseconds. Write that precision so a reload matches the saved value.
+        var utcNow = TruncateToMicroseconds(DateTimeOffset.UtcNow);
 
         foreach (var entry in ChangeTracker.Entries<ICreationTimestamp>())
         {
@@ -53,5 +54,26 @@ public sealed class ReloviaDbContext(DbContextOptions<ReloviaDbContext> options)
                 entry.Entity.UpdatedAt = utcNow;
             }
         }
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified))
+            {
+                continue;
+            }
+
+            foreach (var property in entry.Properties)
+            {
+                if (property.CurrentValue is DateTimeOffset timestamp)
+                {
+                    property.CurrentValue = TruncateToMicroseconds(timestamp);
+                }
+            }
+        }
+    }
+
+    private static DateTimeOffset TruncateToMicroseconds(DateTimeOffset value)
+    {
+        return value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMicrosecond));
     }
 }
