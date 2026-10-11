@@ -23,16 +23,18 @@ One project, `src/Relovia.Api`. Feature code lives under `Features`. Cross-cutti
 
 There is no separate Domain, Application, or Infrastructure project, no generic repository, and no ASP.NET Core Identity. `ReloviaDbContext` is the data access layer. Business rules live in feature services.
 
-Current feature: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`).
+Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) and `Features/Relocations` (`Relocation`).
 
 ## Persistence
 
 - EF Core migrations only. The API does not migrate on startup.
 - Snake_case column and table names.
 - UUID v7 primary keys.
-- Timestamps are `timestamptz`, written at microsecond precision so a reload matches the saved value.
+- Timestamps are `timestamptz`, written at microsecond precision so a reload matches the saved value. Calendar dates are `date`.
+- Enums are stored as their names.
 - Delete behavior is set on each relationship. The current foreign keys use `Restrict`.
 - Email is stored trimmed and lowercased.
+- A relocation stores origin and destination country codes as uppercase ISO 3166-1 alpha-2. Domestic versus international is derived by comparing those codes and is not a column.
 
 ## Authentication
 

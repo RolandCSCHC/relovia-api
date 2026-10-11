@@ -1,4 +1,5 @@
 using Relovia.Api.Common.Persistence;
+using Relovia.Api.Features.Relocations;
 
 namespace Relovia.Api.Features.Identity;
 
@@ -23,4 +24,6 @@ public sealed class User : ICreationTimestamp, IUpdateTimestamp
     public ICollection<ExternalLogin> ExternalLogins { get; } = new List<ExternalLogin>();
 
     public ICollection<AuthSession> AuthSessions { get; } = new List<AuthSession>();
+
+    public ICollection<Relocation> Relocations { get; } = new List<Relocation>();
 }

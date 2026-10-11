@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Features.Identity;
+using Relovia.Api.Features.Relocations;
 
 namespace Relovia.Api.Common.Persistence;
 
@@ -14,6 +15,8 @@ public sealed class ReloviaDbContext(DbContextOptions<ReloviaDbContext> options)
     public DbSet<ExternalLogin> ExternalLogins => Set<ExternalLogin>();
 
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
+
+    public DbSet<Relocation> Relocations => Set<Relocation>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {

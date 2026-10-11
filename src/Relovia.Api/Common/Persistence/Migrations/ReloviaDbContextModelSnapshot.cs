@@ -189,6 +189,87 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.Relocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DestinationCity")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("destination_city");
+
+                    b.Property<string>("DestinationCountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("destination_country_code");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OriginCity")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("origin_city");
+
+                    b.Property<string>("OriginCountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("origin_country_code");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("purpose");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Draft")
+                        .HasColumnName("status");
+
+                    b.Property<DateOnly>("TargetDate")
+                        .HasColumnType("date")
+                        .HasColumnName("target_date");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_relocations");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_relocations_user_id");
+
+                    b.ToTable("relocations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_relocations_destination_country_code", "destination_country_code ~ '^[A-Z]{2}$'");
+
+                            t.HasCheckConstraint("ck_relocations_origin_country_code", "origin_country_code ~ '^[A-Z]{2}$'");
+                        });
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Identity.AuthSession", b =>
                 {
                     b.HasOne("Relovia.Api.Features.Identity.User", "User")
@@ -213,11 +294,25 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.Relocation", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Identity.User", "User")
+                        .WithMany("Relocations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_relocations_users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Identity.User", b =>
                 {
                     b.Navigation("AuthSessions");
 
                     b.Navigation("ExternalLogins");
+
+                    b.Navigation("Relocations");
                 });
 #pragma warning restore 612, 618
         }
