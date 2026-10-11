@@ -39,13 +39,14 @@ dotnet user-secrets set "Authentication:Google:ClientId" "<client-id>"
 dotnet user-secrets set "Authentication:Google:ClientSecret" "<client-secret>"
 ```
 
-In the Google client, set the authorized redirect URI to:
+In the Google client, set both authorized redirect URIs:
 
 ```text
 http://localhost:5080/api/auth/google/callback
+https://api.relovia.app/api/auth/google/callback
 ```
 
-Do not commit the client secret. Production should supply the same keys as environment variables.
+Do not commit the client secret. Production supplies the same keys as environment variables. On the OAuth consent screen, authorize the domain `relovia.app`. While the app is in testing, the Google account must be listed as a test user.
 
 ## Run
 
@@ -81,6 +82,29 @@ ASP.NET Core configuration. Environment variables use `__` between nested keys, 
 | `PORT` | No | When set, replaces `ASPNETCORE_HTTP_PORTS`. Some container hosts inject this. |
 
 Keep hosted database URLs and Google secrets out of Git.
+
+## Production
+
+The API runs from the Dockerfile on Render. Neon hosts Postgres 18. The public API origin is `https://api.relovia.app`. The app origin is `https://relovia.app`.
+
+Npgsql needs a keyword connection string. A `postgresql://` URI is rejected. Use the pooled Neon host for the running API, and the direct host (the one without `-pooler`) only for migrations. The API does not migrate on startup.
+
+```text
+Host=<pooled-host>;Database=relovia;Username=relovia_owner;Password=<password>;SSL Mode=Require
+```
+
+Render environment variables:
+
+| Variable | Value |
+| --- | --- |
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `ConnectionStrings__Relovia` | Pooled keyword string above |
+| `Web__Origins__0` | `https://relovia.app` |
+| `Web__RequestTokenCookieDomain` | `.relovia.app` |
+| `Authentication__Google__ClientId` | OAuth web client id |
+| `Authentication__Google__ClientSecret` | OAuth web client secret |
+
+`GET /health` checks the database. Changing an environment variable takes effect after a new deploy.
 
 ## Tests
 
