@@ -23,7 +23,7 @@ One project, `src/Relovia.Api`. Feature code lives under `Features`. Cross-cutti
 
 There is no separate Domain, Application, or Infrastructure project, no generic repository, and no ASP.NET Core Identity. `ReloviaDbContext` is the data access layer. Business rules live in feature services.
 
-Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) and `Features/Relocations` (`Relocation`).
+Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) and `Features/Relocations` (`Relocation`, `ChecklistTemplate`, `TaskTemplate`).
 
 ## Persistence
 
@@ -32,9 +32,10 @@ Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) a
 - UUID v7 primary keys.
 - Timestamps are `timestamptz`, written at microsecond precision so a reload matches the saved value. Calendar dates are `date`.
 - Enums are stored as their names.
-- Delete behavior is set on each relationship. The current foreign keys use `Restrict`.
+- Delete behavior is set on each relationship. User foreign keys use `Restrict`. A draft template's tasks and dependency codes are deleted with the template.
 - Email is stored trimmed and lowercased.
 - A relocation stores origin and destination country codes as uppercase ISO 3166-1 alpha-2. Domestic versus international is derived by comparing those codes and is not a column.
+- A checklist template is identified by a stable `code` and a `version`. Task `code`s are unique inside that template, and each task records the codes it depends on. A published version cannot be changed. Priority is `Low`, `Normal`, or `High`.
 
 ## Authentication
 

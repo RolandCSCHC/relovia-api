@@ -32,6 +32,8 @@ public sealed class RelocationEndpointTests : IClassFixture<PostgresFixture>, IA
     public Task InitializeAsync()
     {
         _factory = new ReloviaApiFactory(_postgres.ConnectionString);
+        var configuration = _factory.Services.GetRequiredService<IConfiguration>();
+        Assert.Equal(_postgres.ConnectionString, configuration.GetConnectionString("Relovia"));
         return Task.CompletedTask;
     }
 
@@ -284,17 +286,20 @@ public sealed class RelocationEndpointTests : IClassFixture<PostgresFixture>, IA
         };
     }
 
-    private sealed class ReloviaApiFactory(string connectionString) : WebApplicationFactory<Program>
+    private sealed class ReloviaApiFactory : WebApplicationFactory<Program>
     {
+        private readonly string _connectionString;
+
+        public ReloviaApiFactory(string connectionString)
+        {
+            _connectionString = connectionString;
+            // Environment variables override appsettings, including the local Development database.
+            Environment.SetEnvironmentVariable("ConnectionStrings__Relovia", connectionString);
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["ConnectionStrings:Relovia"] = connectionString,
-                });
-            });
+            builder.UseSetting("ConnectionStrings:Relovia", _connectionString);
         }
     }
 

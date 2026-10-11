@@ -5,7 +5,7 @@ using Relovia.Api.Features.Relocations;
 
 namespace Relovia.Api.Common.Persistence;
 
-public sealed class ReloviaDbContext(DbContextOptions<ReloviaDbContext> options)
+public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> options)
     : DbContext(options), IDataProtectionKeyContext
 {
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -18,18 +18,26 @@ public sealed class ReloviaDbContext(DbContextOptions<ReloviaDbContext> options)
 
     public DbSet<Relocation> Relocations => Set<Relocation>();
 
+    public DbSet<ChecklistTemplate> ChecklistTemplates => Set<ChecklistTemplate>();
+
+    public DbSet<TaskTemplate> TaskTemplates => Set<TaskTemplate>();
+
+    public DbSet<TaskTemplateDependency> TaskTemplateDependencies => Set<TaskTemplateDependency>();
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
+        RejectPublishedTemplateEdits();
         ApplyTimestamps();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
-    public override Task<int> SaveChangesAsync(
+    public override async Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
     {
+        await RejectPublishedTemplateEditsAsync(cancellationToken);
         ApplyTimestamps();
-        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

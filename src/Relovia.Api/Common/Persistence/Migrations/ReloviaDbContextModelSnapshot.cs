@@ -189,6 +189,76 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.ChecklistTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DestinationCountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("destination_country_code");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("published_at");
+
+                    b.Property<string>("Purpose")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("purpose");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("scope");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_checklist_templates");
+
+                    b.HasIndex("Code", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ux_checklist_templates_code_version");
+
+                    b.ToTable("checklist_templates", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_checklist_templates_destination_country_code", "destination_country_code IS NULL OR destination_country_code ~ '^[A-Z]{2}$'");
+
+                            t.HasCheckConstraint("ck_checklist_templates_purpose", "purpose IS NULL OR purpose IN ('Work', 'Study', 'Family', 'Lifestyle', 'Other')");
+
+                            t.HasCheckConstraint("ck_checklist_templates_scope", "scope IN ('Domestic', 'International', 'Both')");
+
+                            t.HasCheckConstraint("ck_checklist_templates_version", "version >= 1");
+                        });
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Relocations.Relocation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -270,6 +340,95 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ChecklistTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("checklist_template_id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DaysBeforeMove")
+                        .HasColumnType("integer")
+                        .HasColumnName("days_before_move");
+
+                    b.Property<string>("Phase")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("phase");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_task_templates");
+
+                    b.HasIndex("ChecklistTemplateId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_task_templates_template_id_code");
+
+                    b.ToTable("task_templates", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_task_templates_phase", "phase IN ('Preparation', 'Housing', 'Administration', 'Finances', 'Moving', 'Settlement')");
+
+                            t.HasCheckConstraint("ck_task_templates_priority", "priority IN ('Low', 'Normal', 'High')");
+                        });
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskTemplateDependency", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("DependsOnCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("depends_on_code");
+
+                    b.Property<Guid>("TaskTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_template_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_task_template_dependencies");
+
+                    b.HasIndex("TaskTemplateId", "DependsOnCode")
+                        .IsUnique()
+                        .HasDatabaseName("ux_task_template_dependencies_task_id_code");
+
+                    b.ToTable("task_template_dependencies", (string)null);
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Identity.AuthSession", b =>
                 {
                     b.HasOne("Relovia.Api.Features.Identity.User", "User")
@@ -306,6 +465,30 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskTemplate", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.ChecklistTemplate", "ChecklistTemplate")
+                        .WithMany("Tasks")
+                        .HasForeignKey("ChecklistTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_templates_checklist_templates_checklist_template_id");
+
+                    b.Navigation("ChecklistTemplate");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskTemplateDependency", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.TaskTemplate", "TaskTemplate")
+                        .WithMany("Dependencies")
+                        .HasForeignKey("TaskTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_template_dependencies_task_templates_task_template_id");
+
+                    b.Navigation("TaskTemplate");
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Identity.User", b =>
                 {
                     b.Navigation("AuthSessions");
@@ -313,6 +496,16 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.Navigation("ExternalLogins");
 
                     b.Navigation("Relocations");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.ChecklistTemplate", b =>
+                {
+                    b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskTemplate", b =>
+                {
+                    b.Navigation("Dependencies");
                 });
 #pragma warning restore 612, 618
         }
