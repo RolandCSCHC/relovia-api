@@ -48,6 +48,10 @@ https://api.relovia.app/api/auth/google/callback
 
 Do not commit the client secret. Production supplies the same keys as environment variables. On the OAuth consent screen, authorize the domain `relovia.app`. While the app is in testing, the Google account must be listed as a test user.
 
+## City list
+
+Choosing a country fills its city dropdown from the GeoNames [cities1000](https://download.geonames.org/export/dump/cities1000.zip) list: populated places of at least 1,000 people. The API downloads that list the first time a city dropdown is opened and keeps it for a day. No GeoNames account is required.
+
 ## Run
 
 From the repository root:

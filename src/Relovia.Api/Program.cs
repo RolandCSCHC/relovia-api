@@ -13,6 +13,7 @@ using Relovia.Api.Common.OpenApi;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
 using Relovia.Api.Features.Identity;
+using Relovia.Api.Features.Places;
 using Relovia.Api.Features.Relocations;
 using Scalar.AspNetCore;
 
@@ -90,6 +91,15 @@ builder.Services.AddOptions<SessionSettings>()
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IAuthSessionStore, AuthSessionStore>();
 builder.Services.AddScoped<ExternalAccountService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<GeoNamesCityListSource>(client =>
+{
+    client.BaseAddress = new Uri("https://download.geonames.org/");
+    client.Timeout = TimeSpan.FromSeconds(60);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.app)");
+});
+builder.Services.AddScoped<ICityListSource>(provider => provider.GetRequiredService<GeoNamesCityListSource>());
+builder.Services.AddScoped<CityCatalog>();
 builder.Services.AddScoped<RelocationService>();
 builder.Services.AddScoped<ChecklistService>();
 

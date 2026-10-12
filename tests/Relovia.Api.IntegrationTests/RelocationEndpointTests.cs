@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
 using Relovia.Api.Features.Identity;
+using Relovia.Api.Features.Places;
 using Relovia.Api.Features.Relocations;
 
 namespace Relovia.Api.IntegrationTests;
@@ -23,6 +24,7 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
 
     private readonly PostgresFixture _postgres;
     private ReloviaApiFactory _factory = null!;
+    private string? _citiesDirectory;
 
     public RelocationEndpointTests(PostgresFixture postgres)
     {
@@ -31,7 +33,15 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
 
     public Task InitializeAsync()
     {
-        _factory = new ReloviaApiFactory(_postgres.ConnectionString);
+        _citiesDirectory = Path.Combine(Path.GetTempPath(), "relovia-cities-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_citiesDirectory);
+        var citiesFile = Path.Combine(_citiesDirectory, "cities.txt");
+        var admin1File = Path.Combine(_citiesDirectory, "admin1.txt");
+        File.WriteAllText(
+            citiesFile,
+            "1\tBerlin\tBerlin\t\t0\t0\tP\tPPL\tDE\t\tBE\n");
+        File.WriteAllText(admin1File, "DE.BE\tBerlin\n");
+        _factory = new ReloviaApiFactory(_postgres.ConnectionString, citiesFile, admin1File);
         var configuration = _factory.Services.GetRequiredService<IConfiguration>();
         Assert.Equal(_postgres.ConnectionString, configuration.GetConnectionString("Relovia"));
         return Task.CompletedTask;
@@ -40,6 +50,11 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
     public Task DisposeAsync()
     {
         _factory.Dispose();
+        if (_citiesDirectory is not null)
+        {
+            Directory.Delete(_citiesDirectory, recursive: true);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -211,6 +226,32 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
         Assert.Equal(0, stored);
     }
 
+    [Fact]
+    public async Task City_search_requires_a_session_and_a_country_code()
+    {
+        var anonymous = await CreateClient().Client.GetAsync("/api/places/cities?country=DE&q=Ber");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        var owner = await SignInAsync("cities@example.com");
+        using var client = CreateClient();
+        var missing = await SendAsync<JsonElement>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            "/api/places/cities?country=D&q=Ber",
+            body: null);
+        Assert.Equal(HttpStatusCode.BadRequest, missing.Status);
+
+        var listed = await SendAsync<CitySearchResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            "/api/places/cities?country=DE",
+            body: null);
+        Assert.Equal(HttpStatusCode.OK, listed.Status);
+        Assert.Equal(["Berlin"], listed.Body!.Cities);
+    }
+
     private ClientScope CreateClient()
     {
         var cookies = new CookieJar();
@@ -308,10 +349,14 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
     private sealed class ReloviaApiFactory : WebApplicationFactory<Program>
     {
         private readonly string _connectionString;
+        private readonly string _citiesFile;
+        private readonly string _admin1File;
 
-        public ReloviaApiFactory(string connectionString)
+        public ReloviaApiFactory(string connectionString, string citiesFile, string admin1File)
         {
             _connectionString = connectionString;
+            _citiesFile = citiesFile;
+            _admin1File = admin1File;
             // Environment variables override appsettings, including the local Development database.
             Environment.SetEnvironmentVariable("ConnectionStrings__Relovia", connectionString);
         }
@@ -319,6 +364,8 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("ConnectionStrings:Relovia", _connectionString);
+            builder.UseSetting(GeoNamesCityListSource.CitiesFileKey, _citiesFile);
+            builder.UseSetting(GeoNamesCityListSource.Admin1FileKey, _admin1File);
         }
     }
 
