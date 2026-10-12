@@ -124,4 +124,4 @@ The image publishes `src/Relovia.Api` only. It runs as the non-root user from th
 
 ## CI
 
-GitHub Actions runs on pushes to `main` and on pull requests. One job runs `dotnet test`. Another builds the container image.
+GitHub Actions runs on pushes to `main` and on pull requests. The Test job runs `dotnet test`. The Image job builds the container image after the tests pass.
