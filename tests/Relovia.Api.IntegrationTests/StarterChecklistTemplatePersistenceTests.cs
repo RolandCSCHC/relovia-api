@@ -49,6 +49,47 @@ public sealed class StarterChecklistTemplatePersistenceTests : IClassFixture<Pos
     }
 
     [Fact]
+    public async Task Selection_uses_the_published_starter_for_the_move_type()
+    {
+        await using var db = _postgres.CreateContext();
+        var templates = await db.ChecklistTemplates
+            .AsNoTracking()
+            .Include(template => template.Tasks)
+            .ThenInclude(task => task.Dependencies)
+            .ToListAsync();
+
+        var domestic = ChecklistSelector.Select(Move("US", "US"), templates);
+        Assert.Equal([StarterChecklistTemplates.DomesticCode], domestic.Templates.Select(template => template.Code));
+        Assert.Equal(
+            ["give-notice", "book-movers", "transfer-utilities", "change-address", "unpack-essentials"],
+            domestic.Tasks.Select(task => task.Code));
+        Assert.Equal(["give-notice"], domestic.Tasks.Single(task => task.Code == "book-movers").DependsOnCodes);
+
+        var international = ChecklistSelector.Select(Move("US", "DE"), templates);
+        Assert.Equal(
+            [StarterChecklistTemplates.InternationalCode],
+            international.Templates.Select(template => template.Code));
+        Assert.Equal(
+            ["check-passport", "give-notice", "arrange-housing", "notify-bank", "book-travel", "register-arrival"],
+            international.Tasks.Select(task => task.Code));
+        Assert.DoesNotContain(international.Tasks, task => task.Code == "book-movers");
+    }
+
+    private static Relocation Move(string origin, string destination)
+    {
+        return new Relocation
+        {
+            Name = "Move",
+            OriginCountryCode = origin,
+            OriginCity = "From",
+            DestinationCountryCode = destination,
+            DestinationCity = "To",
+            Purpose = RelocationPurpose.Work,
+            TargetDate = new DateOnly(2026, 12, 1),
+        };
+    }
+
+    [Fact]
     public async Task Published_starter_template_cannot_be_changed()
     {
         await using var db = _postgres.CreateContext();

@@ -37,6 +37,7 @@ Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) a
 - A relocation stores origin and destination country codes as uppercase ISO 3166-1 alpha-2. Domestic versus international is derived by comparing those codes and is not a column.
 - A checklist template is identified by a stable `code` and a `version`. Task `code`s are unique inside that template, and each task records the codes it depends on. A published version cannot be changed. Priority is `Low`, `Normal`, or `High`.
 - Version 1 of `domestic-core` and `international-core` is published in the migrations. Neither sets a destination country or a purpose, so selection can match any move of that scope.
+- Selection keeps published templates whose scope is the move's derived type or `Both`. A destination country or purpose on the template applies only when it is set. Each template code contributes its highest published version. Tasks that share a code become one task: a set destination country outranks a set purpose, either outranks a template with both unset, and a tie keeps the template code that sorts first. Dependency codes from the copies are combined, and a code with no selected task is dropped.
 
 ## Authentication
 
