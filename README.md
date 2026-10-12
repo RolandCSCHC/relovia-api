@@ -36,6 +36,7 @@ Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) a
 - Email is stored trimmed and lowercased.
 - A relocation stores origin and destination country codes as uppercase ISO 3166-1 alpha-2. Domestic versus international is derived by comparing those codes and is not a column.
 - A checklist template is identified by a stable `code` and a `version`. Task `code`s are unique inside that template, and each task records the codes it depends on. A published version cannot be changed. Priority is `Low`, `Normal`, or `High`.
+- Version 1 of `domestic-core` and `international-core` is published in the migrations. Neither sets a destination country or a purpose, so selection can match any move of that scope.
 
 ## Authentication
 

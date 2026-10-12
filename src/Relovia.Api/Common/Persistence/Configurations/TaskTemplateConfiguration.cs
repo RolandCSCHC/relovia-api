@@ -40,6 +40,8 @@ public sealed class TaskTemplateConfiguration : IEntityTypeConfiguration<TaskTem
             .IsUnique()
             .HasDatabaseName("ux_task_templates_template_id_code");
 
+        builder.HasData(StarterChecklistTemplates.Tasks.Cast<object>().ToArray());
+
         builder.HasOne(task => task.ChecklistTemplate)
             .WithMany(template => template.Tasks)
             .HasForeignKey(task => task.ChecklistTemplateId)

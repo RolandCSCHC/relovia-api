@@ -19,6 +19,8 @@ public sealed class TaskTemplateDependencyConfiguration : IEntityTypeConfigurati
             .IsUnique()
             .HasDatabaseName("ux_task_template_dependencies_task_id_code");
 
+        builder.HasData(StarterChecklistTemplates.Dependencies.Cast<object>().ToArray());
+
         builder.HasOne(dependency => dependency.TaskTemplate)
             .WithMany(task => task.Dependencies)
             .HasForeignKey(dependency => dependency.TaskTemplateId)

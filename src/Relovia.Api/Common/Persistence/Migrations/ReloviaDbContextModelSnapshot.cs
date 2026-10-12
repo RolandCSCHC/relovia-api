@@ -257,6 +257,30 @@ namespace Relovia.Api.Common.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_checklist_templates_version", "version >= 1");
                         });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000001"),
+                            Code = "domestic-core",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Scope = "Domestic",
+                            Title = "Domestic move",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000002"),
+                            Code = "international-core",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Scope = "International",
+                            Title = "International move",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        });
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Relocations.Relocation", b =>
@@ -400,6 +424,140 @@ namespace Relovia.Api.Common.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_task_templates_priority", "priority IN ('Low', 'Normal', 'High')");
                         });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000010"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000001"),
+                            Code = "give-notice",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = 60,
+                            Phase = "Preparation",
+                            Priority = "High",
+                            Title = "Give notice on your current home",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000011"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000001"),
+                            Code = "book-movers",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = 30,
+                            Phase = "Moving",
+                            Priority = "High",
+                            Title = "Book movers or a van",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000012"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000001"),
+                            Code = "transfer-utilities",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = 14,
+                            Phase = "Housing",
+                            Priority = "Normal",
+                            Title = "Set up utilities at the new home",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000013"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000001"),
+                            Code = "change-address",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = 7,
+                            Phase = "Administration",
+                            Priority = "Normal",
+                            Title = "Update your address",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000014"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000001"),
+                            Code = "unpack-essentials",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = -1,
+                            Phase = "Settlement",
+                            Priority = "Normal",
+                            Title = "Unpack the essentials",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000020"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000002"),
+                            Code = "check-passport",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = 120,
+                            Phase = "Preparation",
+                            Priority = "High",
+                            Title = "Check that your passport is valid",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000021"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000002"),
+                            Code = "give-notice",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = 60,
+                            Phase = "Preparation",
+                            Priority = "High",
+                            Title = "Give notice on your current home",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000022"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000002"),
+                            Code = "arrange-housing",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = 45,
+                            Phase = "Housing",
+                            Priority = "High",
+                            Title = "Arrange the first place to stay",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000023"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000002"),
+                            Code = "notify-bank",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = 30,
+                            Phase = "Finances",
+                            Priority = "Normal",
+                            Title = "Tell your bank you are moving",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000024"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000002"),
+                            Code = "book-travel",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = 21,
+                            Phase = "Moving",
+                            Priority = "High",
+                            Title = "Book travel for the move",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000025"),
+                            ChecklistTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000002"),
+                            Code = "register-arrival",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            DaysBeforeMove = -14,
+                            Phase = "Settlement",
+                            Priority = "High",
+                            Title = "Register your arrival locally",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 12, 12, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        });
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskTemplateDependency", b =>
@@ -427,6 +585,32 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasDatabaseName("ux_task_template_dependencies_task_id_code");
 
                     b.ToTable("task_template_dependencies", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000101"),
+                            DependsOnCode = "give-notice",
+                            TaskTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000011")
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000102"),
+                            DependsOnCode = "book-movers",
+                            TaskTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000014")
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000103"),
+                            DependsOnCode = "check-passport",
+                            TaskTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000024")
+                        },
+                        new
+                        {
+                            Id = new Guid("0199f0a1-7c00-7000-8000-000000000104"),
+                            DependsOnCode = "arrange-housing",
+                            TaskTemplateId = new Guid("0199f0a1-7c00-7000-8000-000000000025")
+                        });
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Identity.AuthSession", b =>

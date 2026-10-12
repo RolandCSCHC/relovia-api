@@ -50,6 +50,8 @@ public sealed class ChecklistTemplateConfiguration : IEntityTypeConfiguration<Ch
             .IsUnique()
             .HasDatabaseName("ux_checklist_templates_code_version");
 
+        builder.HasData(StarterChecklistTemplates.Templates.Cast<object>().ToArray());
+
         builder.ToTable(table =>
         {
             table.HasCheckConstraint("ck_checklist_templates_version", "version >= 1");
