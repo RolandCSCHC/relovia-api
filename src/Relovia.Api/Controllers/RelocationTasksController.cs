@@ -10,6 +10,7 @@ namespace Relovia.Api.Controllers;
 public sealed class RelocationTasksController(ChecklistService checklists) : ControllerBase
 {
     [HttpGet]
+    [EndpointName("listRelocationTasks")]
     [EndpointSummary("Lists the signed-in user's tasks for a relocation, with progress.")]
     public async Task<ActionResult<RelocationTasksResponse>> List(
         Guid relocationId,
@@ -25,6 +26,7 @@ public sealed class RelocationTasksController(ChecklistService checklists) : Con
     }
 
     [HttpPut("{taskId:guid}")]
+    [EndpointName("updateRelocationTask")]
     [EndpointSummary("Updates a task owned by the signed-in user.")]
     public async Task<ActionResult<RelocationTaskResponse>> Update(
         Guid relocationId,

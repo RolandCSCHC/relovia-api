@@ -19,6 +19,7 @@ public sealed class AuthController(
 {
     [HttpGet("google")]
     [AllowAnonymous]
+    [EndpointName("signInWithGoogle")]
     [EndpointSummary("Starts Google sign-in.")]
     public async Task<IActionResult> SignInWithGoogle()
     {
@@ -38,6 +39,7 @@ public sealed class AuthController(
     }
 
     [HttpGet("me")]
+    [EndpointName("getCurrentUser")]
     [EndpointSummary("Returns the signed-in user.")]
     public async Task<ActionResult<CurrentUserResponse>> Me(CancellationToken cancellationToken)
     {
@@ -65,6 +67,7 @@ public sealed class AuthController(
 
     [HttpPost("logout")]
     [AllowAnonymous]
+    [EndpointName("logout")]
     [EndpointSummary("Revokes the current session and clears the session cookie.")]
     public async Task<IActionResult> Logout()
     {

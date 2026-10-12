@@ -8,6 +8,7 @@ namespace Relovia.Api.Controllers;
 public sealed class ServiceInfoController : ControllerBase
 {
     [HttpGet("/")]
+    [EndpointName("getServiceInfo")]
     [EndpointSummary("Returns the service name.")]
     public ActionResult<ServiceInfoResponse> Get()
     {

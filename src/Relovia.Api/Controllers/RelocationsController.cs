@@ -10,6 +10,7 @@ namespace Relovia.Api.Controllers;
 public sealed class RelocationsController(RelocationService relocations) : ControllerBase
 {
     [HttpGet]
+    [EndpointName("listRelocations")]
     [EndpointSummary("Lists the signed-in user's relocations.")]
     public async Task<ActionResult<IReadOnlyList<RelocationResponse>>> List(CancellationToken cancellationToken)
     {
@@ -22,6 +23,7 @@ public sealed class RelocationsController(RelocationService relocations) : Contr
     }
 
     [HttpGet("{id:guid}")]
+    [EndpointName("getRelocation")]
     [EndpointSummary("Returns one relocation owned by the signed-in user.")]
     public async Task<ActionResult<RelocationResponse>> Get(Guid id, CancellationToken cancellationToken)
     {
@@ -35,6 +37,7 @@ public sealed class RelocationsController(RelocationService relocations) : Contr
     }
 
     [HttpPost]
+    [EndpointName("createRelocation")]
     [EndpointSummary("Creates a relocation for the signed-in user.")]
     public async Task<ActionResult<RelocationResponse>> Create(
         SaveRelocationRequest request,
@@ -50,6 +53,7 @@ public sealed class RelocationsController(RelocationService relocations) : Contr
     }
 
     [HttpPut("{id:guid}")]
+    [EndpointName("updateRelocation")]
     [EndpointSummary("Updates a relocation owned by the signed-in user.")]
     public async Task<ActionResult<RelocationResponse>> Update(
         Guid id,
@@ -66,6 +70,7 @@ public sealed class RelocationsController(RelocationService relocations) : Contr
     }
 
     [HttpDelete("{id:guid}")]
+    [EndpointName("deleteRelocation")]
     [EndpointSummary("Deletes a relocation owned by the signed-in user.")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

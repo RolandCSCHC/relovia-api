@@ -10,6 +10,7 @@ namespace Relovia.Api.Controllers;
 public sealed class ChecklistController(ChecklistService checklists) : ControllerBase
 {
     [HttpGet]
+    [EndpointName("getChecklistSuggestion")]
     [EndpointSummary("Returns the suggested checklist without writing tasks.")]
     public async Task<ActionResult<ChecklistSuggestionResponse>> Get(
         Guid relocationId,
@@ -25,6 +26,7 @@ public sealed class ChecklistController(ChecklistService checklists) : Controlle
     }
 
     [HttpPost]
+    [EndpointName("confirmChecklist")]
     [EndpointSummary("Confirms the selected checklist tasks for a relocation.")]
     public async Task<ActionResult<RelocationTasksResponse>> Confirm(
         Guid relocationId,
