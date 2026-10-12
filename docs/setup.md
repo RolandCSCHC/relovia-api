@@ -60,7 +60,7 @@ The `http` profile listens on `http://localhost:5080`. The Angular app expects t
 
 - `GET /` returns the service name.
 - `GET /health` checks the database.
-- In Development, the OpenAPI document is `/openapi/v1.json` and the Scalar reference is `/scalar/v1`. Each operation has a stable `operationId` so the Angular client can name its methods.
+- In Development, the OpenAPI document is `/openapi/v1.json` and the Scalar reference is `/scalar/v1`. Each operation has a stable `operationId` so the Angular client can name its methods. Enum values in that document are the member names.
 
 The `https` profile also listens on `https://localhost:7080`. Local sign-in uses the `http` profile.
 

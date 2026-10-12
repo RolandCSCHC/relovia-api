@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Common.Errors;
 using Relovia.Api.Common.Health;
+using Relovia.Api.Common.OpenApi;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
 using Relovia.Api.Features.Identity;
@@ -186,6 +187,7 @@ if (builder.Environment.IsDevelopment())
             document.Info.Version = "v1";
             return Task.CompletedTask;
         });
+        options.AddSchemaTransformer(StringEnumSchemaTransformer.TransformAsync);
     });
 }
 
