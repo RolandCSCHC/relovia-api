@@ -36,7 +36,8 @@ public sealed class RelocationConfiguration : IEntityTypeConfiguration<Relocatio
             .HasConversion(city => city.Trim(), city => city);
 
         builder.Property(relocation => relocation.TargetDate)
-            .HasColumnType("date");
+            .HasColumnType("date")
+            .IsRequired(false);
 
         builder.Property(relocation => relocation.Purpose)
             .HasConversion<string>()

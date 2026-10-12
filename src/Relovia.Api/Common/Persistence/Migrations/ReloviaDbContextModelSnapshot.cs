@@ -338,7 +338,7 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasDefaultValue("Draft")
                         .HasColumnName("status");
 
-                    b.Property<DateOnly>("TargetDate")
+                    b.Property<DateOnly?>("TargetDate")
                         .HasColumnType("date")
                         .HasColumnName("target_date");
 
@@ -385,7 +385,7 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("days_before_move");
 
-                    b.Property<DateOnly>("DueDate")
+                    b.Property<DateOnly?>("DueDate")
                         .HasColumnType("date")
                         .HasColumnName("due_date");
 

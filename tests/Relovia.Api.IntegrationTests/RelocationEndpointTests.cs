@@ -148,6 +148,24 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
     }
 
     [Fact]
+    public async Task A_move_can_leave_the_destination_city_and_target_date_unset()
+    {
+        var owner = await SignInAsync("unknown-date@example.com");
+        using var client = CreateClient();
+
+        var created = await SendAsync<RelocationResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            "/api/relocations",
+            Request(name: "Offer pending", targetDate: null, destinationCountry: "DE", destinationCity: "  "));
+
+        Assert.Equal(HttpStatusCode.Created, created.Status);
+        Assert.Equal(string.Empty, created.Body!.DestinationCity);
+        Assert.Null(created.Body.TargetDate);
+    }
+
+    [Fact]
     public async Task Invalid_purpose_status_and_blank_name_are_rejected()
     {
         var owner = await SignInAsync("owner-invalid@example.com");
@@ -268,8 +286,9 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
 
     private static object Request(
         string name,
-        DateOnly targetDate,
+        DateOnly? targetDate,
         string destinationCountry,
+        string destinationCity = "Berlin",
         string purpose = "Work",
         string status = "Active")
     {
@@ -279,7 +298,7 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             originCountryCode = "us",
             originCity = " Austin ",
             destinationCountryCode = destinationCountry,
-            destinationCity = "Berlin",
+            destinationCity,
             targetDate,
             purpose,
             status,

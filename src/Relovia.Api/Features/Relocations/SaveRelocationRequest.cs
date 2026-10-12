@@ -19,8 +19,7 @@ public sealed class SaveRelocationRequest
     [JsonRequired]
     public string DestinationCity { get; set; } = string.Empty;
 
-    [JsonRequired]
-    public DateOnly TargetDate { get; set; }
+    public DateOnly? TargetDate { get; set; }
 
     [JsonRequired]
     public RelocationPurpose Purpose { get; set; }

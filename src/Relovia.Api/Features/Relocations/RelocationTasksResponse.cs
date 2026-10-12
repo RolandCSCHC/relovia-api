@@ -17,7 +17,7 @@ public sealed record RelocationTaskResponse(
     string Code,
     string Title,
     int DaysBeforeMove,
-    DateOnly DueDate,
+    DateOnly? DueDate,
     TaskPhase Phase,
     TaskPriority Priority,
     RelocationTaskStatus Status,

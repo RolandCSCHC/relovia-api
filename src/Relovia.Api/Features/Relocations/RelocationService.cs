@@ -11,7 +11,8 @@ public sealed class RelocationService(ReloviaDbContext db)
     {
         var relocations = await db.Relocations.AsNoTracking()
             .Where(relocation => relocation.UserId == userId)
-            .OrderBy(relocation => relocation.TargetDate)
+            .OrderBy(relocation => relocation.TargetDate == null)
+            .ThenBy(relocation => relocation.TargetDate)
             .ThenBy(relocation => relocation.Name)
             .ThenBy(relocation => relocation.Id)
             .ToListAsync(cancellationToken);
@@ -74,7 +75,19 @@ public sealed class RelocationService(ReloviaDbContext db)
             return new RelocationSaveResult.NotFound();
         }
 
+        var previousTargetDate = relocation.TargetDate;
         Apply(relocation, request);
+        if (previousTargetDate != relocation.TargetDate)
+        {
+            var tasks = await db.RelocationTasks
+                .Where(task => task.RelocationId == relocation.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var task in tasks)
+            {
+                task.DueDate = ChecklistDueDate.On(relocation.TargetDate, task.DaysBeforeMove);
+            }
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         return new RelocationSaveResult.Saved(RelocationResponse.From(relocation));

@@ -7,7 +7,7 @@ public sealed record RelocationResponse(
     string OriginCity,
     string DestinationCountryCode,
     string DestinationCity,
-    DateOnly TargetDate,
+    DateOnly? TargetDate,
     RelocationPurpose Purpose,
     RelocationStatus Status,
     bool IsInternational,

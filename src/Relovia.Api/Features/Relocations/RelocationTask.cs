@@ -14,7 +14,7 @@ public sealed class RelocationTask : ICreationTimestamp, IUpdateTimestamp
 
     public int DaysBeforeMove { get; set; }
 
-    public DateOnly DueDate { get; set; }
+    public DateOnly? DueDate { get; set; }
 
     public TaskPhase Phase { get; set; }
 

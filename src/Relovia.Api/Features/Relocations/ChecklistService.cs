@@ -197,7 +197,8 @@ public sealed class ChecklistService(ReloviaDbContext db)
         var byId = tasks.ToDictionary(task => task.Id);
         var progress = TaskProgressResponse.From(TaskProgress.Calculate(tasks.Select(task => task.Status)));
         var responses = tasks
-            .OrderBy(task => task.DueDate)
+            .OrderBy(task => task.DueDate == null)
+            .ThenBy(task => task.DueDate)
             .ThenBy(task => task.Code, StringComparer.Ordinal)
             .Select(task => new RelocationTaskResponse(
                 task.Id,

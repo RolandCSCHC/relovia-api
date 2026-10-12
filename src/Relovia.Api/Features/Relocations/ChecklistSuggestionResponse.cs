@@ -2,7 +2,7 @@ namespace Relovia.Api.Features.Relocations;
 
 public sealed record ChecklistSuggestionResponse(
     Guid RelocationId,
-    DateOnly TargetDate,
+    DateOnly? TargetDate,
     IReadOnlyList<string> TemplateCodes,
     IReadOnlyList<SuggestedTaskResponse> Tasks)
 {
@@ -28,7 +28,7 @@ public sealed record SuggestedTaskResponse(
     string Code,
     string Title,
     int DaysBeforeMove,
-    DateOnly DueDate,
+    DateOnly? DueDate,
     TaskPhase Phase,
     TaskPriority Priority,
     Guid SourceTemplateTaskId,

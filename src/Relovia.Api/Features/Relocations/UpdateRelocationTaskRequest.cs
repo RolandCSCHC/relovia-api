@@ -7,8 +7,7 @@ public sealed class UpdateRelocationTaskRequest
     [JsonRequired]
     public string Title { get; set; } = string.Empty;
 
-    [JsonRequired]
-    public DateOnly DueDate { get; set; }
+    public DateOnly? DueDate { get; set; }
 
     [JsonRequired]
     public TaskPhase Phase { get; set; }

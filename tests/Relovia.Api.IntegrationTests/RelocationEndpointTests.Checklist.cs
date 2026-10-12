@@ -210,6 +210,63 @@ public sealed partial class RelocationEndpointTests
     }
 
     [Fact]
+    public async Task Due_dates_wait_until_the_target_date_is_known()
+    {
+        var owner = await SignInAsync("due-later@example.com");
+        using var client = CreateClient();
+
+        var created = await SendAsync<RelocationResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            "/api/relocations",
+            Request(name: "Offer pending", targetDate: null, destinationCountry: "US", destinationCity: ""));
+        Assert.Equal(HttpStatusCode.Created, created.Status);
+        var relocationId = created.Body!.Id;
+
+        var suggestion = await SendAsync<ChecklistSuggestionResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            $"/api/relocations/{relocationId}/checklist",
+            body: null);
+        Assert.Equal(HttpStatusCode.OK, suggestion.Status);
+        Assert.Null(suggestion.Body!.TargetDate);
+        Assert.All(suggestion.Body.Tasks, task => Assert.Null(task.DueDate));
+        var notice = suggestion.Body.Tasks.Single(task => task.Code == "give-notice");
+
+        var confirmed = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/checklist",
+            new { tasks = new[] { Payload(notice) } });
+        Assert.Equal(HttpStatusCode.Created, confirmed.Status);
+        Assert.Null(confirmed.Body!.Tasks.Single().DueDate);
+
+        var dated = await SendAsync<RelocationResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Put,
+            $"/api/relocations/{relocationId}",
+            Request(
+                name: "Offer pending",
+                targetDate: new DateOnly(2026, 12, 1),
+                destinationCountry: "US",
+                destinationCity: ""));
+        Assert.Equal(HttpStatusCode.OK, dated.Status);
+
+        var tasks = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            $"/api/relocations/{relocationId}/tasks",
+            body: null);
+        Assert.Equal(HttpStatusCode.OK, tasks.Status);
+        Assert.Equal(new DateOnly(2026, 10, 2), tasks.Body!.Tasks.Single().DueDate);
+    }
+
+    [Fact]
     public async Task A_dependency_cycle_is_rejected_without_writing_tasks()
     {
         var owner = await SignInAsync("checklist-cycle@example.com");

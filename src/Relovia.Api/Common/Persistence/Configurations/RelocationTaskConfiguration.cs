@@ -24,7 +24,8 @@ public sealed class RelocationTaskConfiguration : IEntityTypeConfiguration<Reloc
             .HasConversion(title => title.Trim(), title => title);
 
         builder.Property(task => task.DueDate)
-            .HasColumnType("date");
+            .HasColumnType("date")
+            .IsRequired(false);
 
         builder.Property(task => task.Phase)
             .HasConversion<string>()

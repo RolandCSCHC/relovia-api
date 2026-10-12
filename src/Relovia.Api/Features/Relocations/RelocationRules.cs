@@ -16,7 +16,7 @@ public static class RelocationRules
         RequireCountryCode(errors, "originCountryCode", request.OriginCountryCode);
         RequireText(errors, "originCity", request.OriginCity, CityMaxLength, "Origin city");
         RequireCountryCode(errors, "destinationCountryCode", request.DestinationCountryCode);
-        RequireText(errors, "destinationCity", request.DestinationCity, CityMaxLength, "Destination city");
+        OptionalText(errors, "destinationCity", request.DestinationCity, CityMaxLength, "Destination city");
 
         if (!Enum.IsDefined(request.Purpose))
         {
@@ -60,5 +60,18 @@ public static class RelocationRules
         }
 
         errors[key] = ["Enter a two-letter country code."];
+    }
+
+    private static void OptionalText(
+        Dictionary<string, string[]> errors,
+        string key,
+        string value,
+        int maxLength,
+        string label)
+    {
+        if (value.Trim().Length > maxLength)
+        {
+            errors[key] = [$"{label} must be {maxLength} characters or fewer."];
+        }
     }
 }

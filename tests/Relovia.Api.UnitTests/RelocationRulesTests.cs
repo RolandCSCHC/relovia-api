@@ -13,6 +13,18 @@ public sealed class RelocationRulesTests
     }
 
     [Fact]
+    public void Destination_city_and_target_date_can_be_left_unset()
+    {
+        var request = ValidRequest();
+        request.DestinationCity = "   ";
+        request.TargetDate = null;
+
+        var errors = RelocationRules.Validate(request);
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public void Blank_text_and_a_bad_country_code_are_rejected()
     {
         var request = ValidRequest();

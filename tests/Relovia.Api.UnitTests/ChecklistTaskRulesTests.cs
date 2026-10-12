@@ -9,6 +9,7 @@ public sealed class ChecklistTaskRulesTests
     [Fact]
     public void Due_date_is_the_target_date_minus_the_days_before_the_move()
     {
+        Assert.Null(ChecklistDueDate.On(null, 60));
         Assert.Equal(new DateOnly(2026, 10, 2), ChecklistDueDate.On(Target, 60));
         Assert.Equal(Target, ChecklistDueDate.On(Target, 0));
         Assert.Equal(new DateOnly(2026, 12, 15), ChecklistDueDate.On(Target, -14));

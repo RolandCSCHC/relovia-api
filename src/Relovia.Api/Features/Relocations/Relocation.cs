@@ -19,7 +19,7 @@ public sealed class Relocation : ICreationTimestamp, IUpdateTimestamp
 
     public string DestinationCity { get; set; } = string.Empty;
 
-    public DateOnly TargetDate { get; set; }
+    public DateOnly? TargetDate { get; set; }
 
     public RelocationPurpose Purpose { get; set; }
 
