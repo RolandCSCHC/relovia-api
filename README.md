@@ -23,7 +23,7 @@ One project, `src/Relovia.Api`. Feature code lives under `Features`. Cross-cutti
 
 There is no separate Domain, Application, or Infrastructure project, no generic repository, and no ASP.NET Core Identity. `ReloviaDbContext` is the data access layer. Business rules live in feature services.
 
-Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) and `Features/Relocations` (`Relocation`, `ChecklistTemplate`, `TaskTemplate`).
+Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) and `Features/Relocations` (`Relocation`, `ChecklistTemplate`, `TaskTemplate`, `RelocationTask`, `TaskDependency`).
 
 ## Persistence
 
@@ -32,7 +32,7 @@ Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) a
 - UUID v7 primary keys.
 - Timestamps are `timestamptz`, written at microsecond precision so a reload matches the saved value. Calendar dates are `date`.
 - Enums are stored as their names.
-- Delete behavior is set on each relationship. User foreign keys use `Restrict`. A draft template's tasks and dependency codes are deleted with the template.
+- Delete behavior is set on each relationship. User foreign keys use `Restrict`. A draft template's tasks and dependency codes are deleted with the template. A confirmed task's `source_template_task_id` uses `ON DELETE SET NULL`. `task_dependencies` stores `relocation_id` and composite foreign keys to both tasks.
 - Email is stored trimmed and lowercased.
 - A relocation stores origin and destination country codes as uppercase ISO 3166-1 alpha-2. Domestic versus international is derived by comparing those codes and is not a column.
 - A checklist template is identified by a stable `code` and a `version`. Task `code`s are unique inside that template, and each task records the codes it depends on. A published version cannot be changed. Priority is `Low`, `Normal`, or `High`.
@@ -58,6 +58,10 @@ Unexpected failures and validation errors use Problem Details. Outside Developme
 Endpoints require an authenticated session unless they opt out. `GET /api/auth/google` starts sign-in, `GET /api/auth/me` returns the current user, and `POST /api/auth/logout` revokes the session.
 
 `/api/relocations` lists, reads, creates, updates, and deletes relocations for the signed-in user. Another user's relocation is not found. Purpose and status are the names `Work`, `Study`, `Family`, `Lifestyle`, `Other` and `Draft`, `Active`, `Completed`, `Archived`. The response includes `isInternational`, which is true when the country codes differ.
+
+`GET /api/relocations/{id}/checklist` returns the suggested tasks and does not write them. The due date is the target date minus `daysBeforeMove`. `POST` confirms the tasks the caller kept. A code must come from that suggestion; an omitted task is left out, and a dependency that points at an omitted task is dropped. Title, days before the move, phase, and priority can be changed in that request, and the due date is calculated again. A second confirm is rejected once tasks exist. Self-references, links across relocations, and cycles are rejected.
+
+`GET /api/relocations/{id}/tasks` lists those tasks and progress. Progress is `done / (todo + in progress + done)`. A dependency is satisfied when the prerequisite is `Done` or `Skipped`. `PUT /api/relocations/{id}/tasks/{taskId}` updates the title, due date, phase, priority, and status. The template is left unchanged.
 
 ## Hosts
 

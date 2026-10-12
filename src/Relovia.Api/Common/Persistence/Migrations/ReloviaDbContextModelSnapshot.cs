@@ -364,6 +364,127 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.RelocationTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DaysBeforeMove")
+                        .HasColumnType("integer")
+                        .HasColumnName("days_before_move");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<string>("Phase")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("phase");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("priority");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<Guid?>("SourceTemplateTaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_template_task_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Todo")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tasks");
+
+                    b.HasAlternateKey("RelocationId", "Id")
+                        .HasName("ak_tasks_relocation_id_id");
+
+                    b.HasIndex("SourceTemplateTaskId")
+                        .HasDatabaseName("ix_tasks_source_template_task_id");
+
+                    b.HasIndex("RelocationId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_tasks_relocation_id_code");
+
+                    b.ToTable("tasks", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_tasks_phase", "phase IN ('Preparation', 'Housing', 'Administration', 'Finances', 'Moving', 'Settlement')");
+
+                            t.HasCheckConstraint("ck_tasks_priority", "priority IN ('Low', 'Normal', 'High')");
+
+                            t.HasCheckConstraint("ck_tasks_status", "status IN ('Todo', 'InProgress', 'Done', 'Skipped')");
+                        });
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskDependency", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("DependsOnTaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("depends_on_task_id");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_task_dependencies");
+
+                    b.HasIndex("RelocationId", "DependsOnTaskId")
+                        .HasDatabaseName("ix_task_dependencies_relocation_id_depends_on_task_id");
+
+                    b.HasIndex("RelocationId", "TaskId")
+                        .HasDatabaseName("ix_task_dependencies_relocation_id_task_id");
+
+                    b.HasIndex("TaskId", "DependsOnTaskId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_task_dependencies_task_id_depends_on_task_id");
+
+                    b.ToTable("task_dependencies", (string)null);
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskTemplate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -649,6 +770,49 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.RelocationTask", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
+                        .WithMany("Tasks")
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tasks_relocations_relocation_id");
+
+                    b.HasOne("Relovia.Api.Features.Relocations.TaskTemplate", "SourceTemplateTask")
+                        .WithMany()
+                        .HasForeignKey("SourceTemplateTaskId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_tasks_task_templates_source_template_task_id");
+
+                    b.Navigation("Relocation");
+
+                    b.Navigation("SourceTemplateTask");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskDependency", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.RelocationTask", "DependsOnTask")
+                        .WithMany("Dependents")
+                        .HasForeignKey("RelocationId", "DependsOnTaskId")
+                        .HasPrincipalKey("RelocationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_dependencies_tasks_relocation_id_depends_on_task_id");
+
+                    b.HasOne("Relovia.Api.Features.Relocations.RelocationTask", "Task")
+                        .WithMany("Dependencies")
+                        .HasForeignKey("RelocationId", "TaskId")
+                        .HasPrincipalKey("RelocationId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_dependencies_tasks_relocation_id_task_id");
+
+                    b.Navigation("DependsOnTask");
+
+                    b.Navigation("Task");
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskTemplate", b =>
                 {
                     b.HasOne("Relovia.Api.Features.Relocations.ChecklistTemplate", "ChecklistTemplate")
@@ -685,6 +849,18 @@ namespace Relovia.Api.Common.Persistence.Migrations
             modelBuilder.Entity("Relovia.Api.Features.Relocations.ChecklistTemplate", b =>
                 {
                     b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.Relocation", b =>
+                {
+                    b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Relocations.RelocationTask", b =>
+                {
+                    b.Navigation("Dependencies");
+
+                    b.Navigation("Dependents");
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Relocations.TaskTemplate", b =>

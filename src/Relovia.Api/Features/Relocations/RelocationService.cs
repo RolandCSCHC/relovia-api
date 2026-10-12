@@ -90,6 +90,16 @@ public sealed class RelocationService(ReloviaDbContext db)
             return false;
         }
 
+        var dependencies = await db.TaskDependencies
+            .Where(dependency => dependency.RelocationId == relocation.Id)
+            .ToListAsync(cancellationToken);
+        db.TaskDependencies.RemoveRange(dependencies);
+
+        var tasks = await db.RelocationTasks
+            .Where(task => task.RelocationId == relocation.Id)
+            .ToListAsync(cancellationToken);
+        db.RelocationTasks.RemoveRange(tasks);
+
         db.Relocations.Remove(relocation);
         await db.SaveChangesAsync(cancellationToken);
         return true;

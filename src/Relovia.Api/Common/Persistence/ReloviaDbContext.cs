@@ -24,6 +24,10 @@ public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> 
 
     public DbSet<TaskTemplateDependency> TaskTemplateDependencies => Set<TaskTemplateDependency>();
 
+    public DbSet<RelocationTask> RelocationTasks => Set<RelocationTask>();
+
+    public DbSet<TaskDependency> TaskDependencies => Set<TaskDependency>();
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         RejectPublishedTemplateEdits();

@@ -31,6 +31,8 @@ public sealed class Relocation : ICreationTimestamp, IUpdateTimestamp
 
     public User User { get; set; } = null!;
 
+    public ICollection<RelocationTask> Tasks { get; } = new List<RelocationTask>();
+
     public bool IsInternational =>
         !CountryCodes.AreSameCountry(OriginCountryCode, DestinationCountryCode);
 }

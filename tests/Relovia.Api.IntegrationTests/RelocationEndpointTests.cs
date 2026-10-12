@@ -14,7 +14,7 @@ using Relovia.Api.Features.Relocations;
 
 namespace Relovia.Api.IntegrationTests;
 
-public sealed class RelocationEndpointTests : IClassFixture<PostgresFixture>, IAsyncLifetime
+public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixture>, IAsyncLifetime
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {

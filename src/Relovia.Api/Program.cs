@@ -90,6 +90,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IAuthSessionStore, AuthSessionStore>();
 builder.Services.AddScoped<ExternalAccountService>();
 builder.Services.AddScoped<RelocationService>();
+builder.Services.AddScoped<ChecklistService>();
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
 var authentication = builder.Services.AddAuthentication(options =>
