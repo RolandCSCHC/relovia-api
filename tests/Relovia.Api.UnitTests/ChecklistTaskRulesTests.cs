@@ -13,6 +13,18 @@ public sealed class ChecklistTaskRulesTests
         Assert.Equal(new DateOnly(2026, 10, 2), ChecklistDueDate.On(Target, 60));
         Assert.Equal(Target, ChecklistDueDate.On(Target, 0));
         Assert.Equal(new DateOnly(2026, 12, 15), ChecklistDueDate.On(Target, -14));
+        Assert.Equal(30, ChecklistDueDate.DaysBefore(Target, new DateOnly(2026, 11, 1)));
+    }
+
+    [Fact]
+    public void A_custom_task_code_comes_from_the_title_and_stays_unique()
+    {
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+
+        Assert.Equal("pack-the-kitchen", TaskCodes.Create("  Pack the kitchen! ", taken));
+        taken.Add("pack-the-kitchen");
+        Assert.Equal("pack-the-kitchen-2", TaskCodes.Create("Pack the kitchen", taken));
+        Assert.Equal("task", TaskCodes.Create("...", new HashSet<string>()));
     }
 
     [Fact]

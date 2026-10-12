@@ -130,6 +130,81 @@ public sealed class ChecklistService(ReloviaDbContext db)
         return ToResponse(tasks);
     }
 
+    public async Task<RelocationTaskCreateResult> CreateAsync(
+        Guid userId,
+        Guid relocationId,
+        CreateRelocationTaskRequest request,
+        CancellationToken cancellationToken)
+    {
+        var errors = RelocationTaskRules.Validate(request);
+        if (errors.Count > 0)
+        {
+            return new RelocationTaskCreateResult.Invalid(errors);
+        }
+
+        var relocation = await db.Relocations.AsNoTracking()
+            .Where(candidate => candidate.Id == relocationId && candidate.UserId == userId)
+            .Select(candidate => new { candidate.Id, candidate.TargetDate })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (relocation is null)
+        {
+            return new RelocationTaskCreateResult.RelocationNotFound();
+        }
+
+        var codes = await db.RelocationTasks.AsNoTracking()
+            .Where(task => task.RelocationId == relocation.Id)
+            .Select(task => task.Code)
+            .ToListAsync(cancellationToken);
+        var task = new RelocationTask
+        {
+            RelocationId = relocation.Id,
+            Code = TaskCodes.Create(request.Title, codes.ToHashSet(StringComparer.Ordinal)),
+            Title = request.Title.Trim(),
+            DaysBeforeMove = request.DueDate is DateOnly due && relocation.TargetDate is DateOnly target
+                ? ChecklistDueDate.DaysBefore(target, due)
+                : 0,
+            DueDate = request.DueDate,
+            Phase = request.Phase,
+            Priority = request.Priority,
+            Status = RelocationTaskStatus.Todo,
+        };
+        db.RelocationTasks.Add(task);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var response = ToResponse([task]).Tasks.Single();
+        return new RelocationTaskCreateResult.Created(response);
+    }
+
+    public async Task<RelocationTaskDeleteResult> DeleteAsync(
+        Guid userId,
+        Guid relocationId,
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        var relocation = await FindRelocationAsync(userId, relocationId, cancellationToken);
+        if (relocation is null)
+        {
+            return new RelocationTaskDeleteResult.RelocationNotFound();
+        }
+
+        var task = await db.RelocationTasks.SingleOrDefaultAsync(
+            candidate => candidate.Id == taskId && candidate.RelocationId == relocation.Id,
+            cancellationToken);
+        if (task is null)
+        {
+            return new RelocationTaskDeleteResult.TaskNotFound();
+        }
+
+        var links = await db.TaskDependencies
+            .Where(dependency => dependency.RelocationId == relocation.Id
+                && (dependency.TaskId == task.Id || dependency.DependsOnTaskId == task.Id))
+            .ToListAsync(cancellationToken);
+        db.TaskDependencies.RemoveRange(links);
+        db.RelocationTasks.Remove(task);
+        await db.SaveChangesAsync(cancellationToken);
+        return new RelocationTaskDeleteResult.Deleted();
+    }
+
     public async Task<RelocationTaskUpdateResult> UpdateAsync(
         Guid userId,
         Guid relocationId,

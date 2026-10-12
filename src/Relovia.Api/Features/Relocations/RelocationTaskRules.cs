@@ -2,20 +2,17 @@ namespace Relovia.Api.Features.Relocations;
 
 public static class RelocationTaskRules
 {
+    public static Dictionary<string, string[]> Validate(CreateRelocationTaskRequest request)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        RequireDetails(errors, request.Title, request.Phase, request.Priority);
+        return errors;
+    }
+
     public static Dictionary<string, string[]> Validate(UpdateRelocationTaskRequest request)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
-        RequireTitle(errors, "title", request.Title);
-
-        if (!Enum.IsDefined(request.Phase))
-        {
-            errors["phase"] = ["Phase must be Preparation, Housing, Administration, Finances, Moving, or Settlement."];
-        }
-
-        if (!Enum.IsDefined(request.Priority))
-        {
-            errors["priority"] = ["Priority must be Low, Normal, or High."];
-        }
+        RequireDetails(errors, request.Title, request.Phase, request.Priority);
 
         if (!Enum.IsDefined(request.Status))
         {
@@ -58,6 +55,25 @@ public static class RelocationTaskRules
         }
 
         return errors;
+    }
+
+    private static void RequireDetails(
+        Dictionary<string, string[]> errors,
+        string title,
+        TaskPhase phase,
+        TaskPriority priority)
+    {
+        RequireTitle(errors, "title", title);
+
+        if (!Enum.IsDefined(phase))
+        {
+            errors["phase"] = ["Phase must be Preparation, Housing, Administration, Finances, Moving, or Settlement."];
+        }
+
+        if (!Enum.IsDefined(priority))
+        {
+            errors["priority"] = ["Priority must be Low, Normal, or High."];
+        }
     }
 
     private static void RequireTitle(Dictionary<string, string[]> errors, string key, string value)

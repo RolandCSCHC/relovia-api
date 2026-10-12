@@ -25,6 +25,56 @@ public sealed class RelocationTasksController(ChecklistService checklists) : Con
         return tasks is null ? NotFoundRelocation() : Ok(tasks);
     }
 
+    [HttpPost]
+    [EndpointName("createRelocationTask")]
+    [EndpointSummary("Adds a task to the signed-in user's relocation.")]
+    public async Task<ActionResult<RelocationTaskResponse>> Create(
+        Guid relocationId,
+        CreateRelocationTaskRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await checklists.CreateAsync(userId, relocationId, request, cancellationToken);
+        return result switch
+        {
+            RelocationTaskCreateResult.Invalid invalid => ApiValidation.Invalid(HttpContext, invalid.Errors),
+            RelocationTaskCreateResult.RelocationNotFound => NotFoundRelocation(),
+            RelocationTaskCreateResult.Created created => Created(
+                $"/api/relocations/{relocationId}/tasks/{created.Task.Id}",
+                created.Task),
+            _ => throw new InvalidOperationException("Unexpected task create result."),
+        };
+    }
+
+    [HttpDelete("{taskId:guid}")]
+    [EndpointName("deleteRelocationTask")]
+    [EndpointSummary("Deletes a task owned by the signed-in user.")]
+    public async Task<IActionResult> Delete(
+        Guid relocationId,
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await checklists.DeleteAsync(userId, relocationId, taskId, cancellationToken);
+        return result switch
+        {
+            RelocationTaskDeleteResult.RelocationNotFound => NotFoundRelocation(),
+            RelocationTaskDeleteResult.TaskNotFound => Problem(
+                statusCode: StatusCodes.Status404NotFound,
+                title: "Task was not found."),
+            RelocationTaskDeleteResult.Deleted => NoContent(),
+            _ => throw new InvalidOperationException("Unexpected task delete result."),
+        };
+    }
+
     [HttpPut("{taskId:guid}")]
     [EndpointName("updateRelocationTask")]
     [EndpointSummary("Updates a task owned by the signed-in user.")]

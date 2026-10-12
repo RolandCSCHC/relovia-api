@@ -267,6 +267,98 @@ public sealed partial class RelocationEndpointTests
     }
 
     [Fact]
+    public async Task The_owner_can_add_and_delete_a_task()
+    {
+        var owner = await SignInAsync("task-crud@example.com");
+        var other = await SignInAsync("task-crud-other@example.com");
+        using var client = CreateClient();
+        using var otherClient = CreateClient();
+
+        var created = await SendAsync<RelocationResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            "/api/relocations",
+            Request(name: "Task list", targetDate: new DateOnly(2026, 12, 1), destinationCountry: "US"));
+        Assert.Equal(HttpStatusCode.Created, created.Status);
+        var relocationId = created.Body!.Id;
+
+        var suggestion = await SendAsync<ChecklistSuggestionResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            $"/api/relocations/{relocationId}/checklist",
+            body: null);
+        var notice = suggestion.Body!.Tasks.Single(task => task.Code == "give-notice");
+        var movers = suggestion.Body.Tasks.Single(task => task.Code == "book-movers");
+        var confirmed = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/checklist",
+            new { tasks = new[] { Payload(notice), Payload(movers) } });
+        Assert.Equal(HttpStatusCode.Created, confirmed.Status);
+        var confirmedNotice = confirmed.Body!.Tasks.Single(task => task.Code == "give-notice");
+
+        var blank = await SendAsync<JsonElement>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/tasks",
+            new { title = "  ", dueDate = (DateOnly?)null, phase = "Moving", priority = "Normal" });
+        Assert.Equal(HttpStatusCode.BadRequest, blank.Status);
+
+        var added = await SendAsync<RelocationTaskResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/tasks",
+            new
+            {
+                title = " Pack the kitchen ",
+                dueDate = new DateOnly(2026, 11, 1),
+                phase = "Moving",
+                priority = "Normal",
+            });
+        Assert.Equal(HttpStatusCode.Created, added.Status);
+        Assert.Equal($"/api/relocations/{relocationId}/tasks/{added.Body!.Id}", added.Response.Headers.Location?.OriginalString);
+        Assert.Equal("Pack the kitchen", added.Body.Title);
+        Assert.Equal("pack-the-kitchen", added.Body.Code);
+        Assert.Equal(30, added.Body.DaysBeforeMove);
+        Assert.Equal(new DateOnly(2026, 11, 1), added.Body.DueDate);
+        Assert.Equal(RelocationTaskStatus.Todo, added.Body.Status);
+        Assert.Null(added.Body.SourceTemplateTaskId);
+
+        var hidden = await SendAsync<RelocationTaskResponse>(
+            otherClient,
+            other.Token,
+            HttpMethod.Delete,
+            $"/api/relocations/{relocationId}/tasks/{confirmedNotice.Id}",
+            body: null);
+        Assert.Equal(HttpStatusCode.NotFound, hidden.Status);
+
+        var deleted = await SendAsync<RelocationTaskResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Delete,
+            $"/api/relocations/{relocationId}/tasks/{confirmedNotice.Id}",
+            body: null);
+        Assert.Equal(HttpStatusCode.NoContent, deleted.Status);
+
+        var tasks = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            $"/api/relocations/{relocationId}/tasks",
+            body: null);
+        Assert.Equal(HttpStatusCode.OK, tasks.Status);
+        Assert.Equal(
+            ["book-movers", "pack-the-kitchen"],
+            tasks.Body!.Tasks.Select(task => task.Code).OrderBy(code => code, StringComparer.Ordinal));
+        Assert.Empty(tasks.Body.Tasks.Single(task => task.Code == "book-movers").Dependencies);
+    }
+
+    [Fact]
     public async Task A_dependency_cycle_is_rejected_without_writing_tasks()
     {
         var owner = await SignInAsync("checklist-cycle@example.com");

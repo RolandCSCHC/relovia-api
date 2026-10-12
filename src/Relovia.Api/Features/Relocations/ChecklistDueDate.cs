@@ -6,4 +6,9 @@ public static class ChecklistDueDate
     {
         return targetDate?.AddDays(-daysBeforeMove);
     }
+
+    public static int DaysBefore(DateOnly targetDate, DateOnly dueDate)
+    {
+        return targetDate.DayNumber - dueDate.DayNumber;
+    }
 }

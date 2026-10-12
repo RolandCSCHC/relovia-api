@@ -84,6 +84,14 @@ public sealed class RelocationService(ReloviaDbContext db)
                 .ToListAsync(cancellationToken);
             foreach (var task in tasks)
             {
+                if (previousTargetDate is null
+                    && relocation.TargetDate is DateOnly target
+                    && task.DueDate is DateOnly due)
+                {
+                    task.DaysBeforeMove = ChecklistDueDate.DaysBefore(target, due);
+                    continue;
+                }
+
                 task.DueDate = ChecklistDueDate.On(relocation.TargetDate, task.DaysBeforeMove);
             }
         }

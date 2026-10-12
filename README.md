@@ -61,7 +61,7 @@ Endpoints require an authenticated session unless they opt out. `GET /api/auth/g
 
 `GET /api/relocations/{id}/checklist` returns the suggested tasks and does not write them. When the relocation has a target date, the due date is that date minus `daysBeforeMove`. Destination city and target date can be left empty, and the due date stays empty until a target date is saved. `POST` confirms the tasks the caller kept. A code must come from that suggestion; an omitted task is left out, and a dependency that points at an omitted task is dropped. Title, days before the move, phase, and priority can be changed in that request, and the due date is calculated again. A second confirm is rejected once tasks exist. Self-references, links across relocations, and cycles are rejected.
 
-`GET /api/relocations/{id}/tasks` lists those tasks and progress. Progress is `done / (todo + in progress + done)`. A dependency is satisfied when the prerequisite is `Done` or `Skipped`. `PUT /api/relocations/{id}/tasks/{taskId}` updates the title, due date, phase, priority, and status. The template is left unchanged.
+`GET /api/relocations/{id}/tasks` lists those tasks and progress. Progress is `done / (todo + in progress + done)`. A dependency is satisfied when the prerequisite is `Done` or `Skipped`. `POST` adds a task that starts as `Todo`. `PUT /api/relocations/{id}/tasks/{taskId}` updates the title, due date, phase, priority, and status. `DELETE` removes that task and the dependency links that mention it. The template is left unchanged.
 
 ## Hosts
 
