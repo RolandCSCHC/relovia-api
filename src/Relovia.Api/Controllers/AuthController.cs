@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
+using Relovia.Api.Features.Access;
 using Relovia.Api.Features.Identity;
 
 namespace Relovia.Api.Controllers;
@@ -15,6 +16,7 @@ namespace Relovia.Api.Controllers;
 public sealed class AuthController(
     ReloviaDbContext db,
     WebSettings web,
+    AccessPolicy access,
     IAuthenticationSchemeProvider schemes) : ControllerBase
 {
     [HttpGet("google")]
@@ -39,8 +41,11 @@ public sealed class AuthController(
     }
 
     [HttpGet("me")]
+    // Signed-in people without access still need to learn that, so the global approval
+    // requirement is skipped here. The action answers 401 itself when nobody is signed in.
+    [AllowAnonymous]
     [EndpointName("getCurrentUser")]
-    [EndpointSummary("Returns the signed-in user.")]
+    [EndpointSummary("Returns the signed-in user and whether they can use the app yet.")]
     public async Task<ActionResult<CurrentUserResponse>> Me(CancellationToken cancellationToken)
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -62,7 +67,8 @@ public sealed class AuthController(
             user.DisplayName,
             user.AvatarUrl,
             user.PreferredCurrency,
-            user.PreferredLanguage));
+            user.PreferredLanguage,
+            access.HasAccess(user.Email)));
     }
 
     [HttpPost("logout")]
@@ -82,4 +88,5 @@ public sealed record CurrentUserResponse(
     string DisplayName,
     string? AvatarUrl,
     string PreferredCurrency,
-    string PreferredLanguage);
+    string PreferredLanguage,
+    bool HasAccess);

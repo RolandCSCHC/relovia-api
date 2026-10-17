@@ -79,6 +79,13 @@ ASP.NET Core configuration. Environment variables use `__` between nested keys, 
 | `Web:RequestTokenCookieDomain` | No | Leave empty so `XSRF-TOKEN` stays on the API host. Set a parent domain, such as `.example.com`, only when the app and API are sibling subdomains. |
 | `Authentication:Google:ClientId` | For Google sign-in | OAuth client id. |
 | `Authentication:Google:ClientSecret` | For Google sign-in | OAuth client secret. |
+| `Access:Restricted` | No | Default `true`. While true, only `Access:AllowedEmails` can use the API: every other signed-in user gets `403` and `hasAccess: false` from `GET /api/auth/me`. Set to `false` to open the app to everyone. |
+| `Access:AllowedEmails` | No | Google accounts that can use the app while it is restricted, and that receive the "someone is interested" email. `appsettings.json` lists `rcschlosser@miuandes.cl`. Environment variables: `Access__AllowedEmails__0`, `Access__AllowedEmails__1`. |
+| `Email:Host` | For the interest email | SMTP server. Without it nobody is emailed; the API logs a warning and tries again the next time that person signs in. |
+| `Email:Port` | No | Default `587` (STARTTLS). `465` uses implicit TLS. |
+| `Email:Username` | For the interest email | SMTP login. |
+| `Email:Password` | For the interest email | SMTP password. For Gmail, use an app password. Keep it out of Git. |
+| `Email:From` | No | Sender address. Defaults to `Email:Username`. |
 | `Session:SlidingLifetime` | No | Default `14.00:00:00`. Must be positive. |
 | `Session:AbsoluteLifetime` | No | Default `30.00:00:00`. Must cover the sliding lifetime. |
 | `ASPNETCORE_ENVIRONMENT` | No | `Development` turns on user secrets, OpenAPI, and Scalar. |
@@ -108,7 +115,22 @@ Render environment variables:
 | `Authentication__Google__ClientId` | OAuth web client id |
 | `Authentication__Google__ClientSecret` | OAuth web client secret |
 
+Add the SMTP settings below so the developer is emailed when someone signs in to show interest:
+
+| Variable | Value |
+| --- | --- |
+| `Email__Host` | SMTP host, for example `smtp.gmail.com` |
+| `Email__Port` | `587` |
+| `Email__Username` | SMTP login |
+| `Email__Password` | SMTP password or app password |
+
 `GET /health` checks the database. Changing an environment variable takes effect after a new deploy.
+
+### Closed preview
+
+Until the app is ready, production is restricted (`Access:Restricted` defaults to `true`). Anyone can sign in with Google, but only the emails in `Access:AllowedEmails` can use the app. The first time someone else signs in, the API emails the allowed addresses once (`users.interest_notified_at` records it). A failed or unconfigured email never blocks sign-in, and is retried on that person's next sign-in.
+
+To let another person in, add their email as `Access__AllowedEmails__1` and redeploy. To open the app to everyone, set `Access__Restricted` to `false`.
 
 ### Production migrations
 

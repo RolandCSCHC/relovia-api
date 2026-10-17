@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
+using Relovia.Api.Features.Access;
 using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Places;
@@ -355,11 +356,18 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
         private readonly string _citiesFile;
         private readonly string _admin1File;
 
-        public ReloviaApiFactory(string connectionString, string citiesFile, string admin1File)
+        private readonly bool _restricted;
+
+        public ReloviaApiFactory(
+            string connectionString,
+            string citiesFile,
+            string admin1File,
+            bool restricted = false)
         {
             _connectionString = connectionString;
             _citiesFile = citiesFile;
             _admin1File = admin1File;
+            _restricted = restricted;
             // Environment variables override appsettings, including the local Development database.
             Environment.SetEnvironmentVariable("ConnectionStrings__Relovia", connectionString);
         }
@@ -369,10 +377,16 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             builder.UseSetting("ConnectionStrings:Relovia", _connectionString);
             builder.UseSetting(GeoNamesCityListSource.CitiesFileKey, _citiesFile);
             builder.UseSetting(GeoNamesCityListSource.Admin1FileKey, _admin1File);
+            // Most tests sign in as arbitrary example.com users, so they run with the app open.
+            builder.UseSetting("Access:Restricted", _restricted ? "true" : "false");
+            builder.UseSetting("Access:AllowedEmails:0", AllowedEmail);
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IExchangeRateProvider>();
                 services.AddScoped<IExchangeRateProvider, FakeRateProvider>();
+                services.RemoveAll<IInterestNotifier>();
+                services.AddSingleton<RecordingInterestNotifier>();
+                services.AddSingleton<IInterestNotifier>(provider => provider.GetRequiredService<RecordingInterestNotifier>());
             });
         }
     }

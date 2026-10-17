@@ -17,6 +17,9 @@ public sealed class User : ICreationTimestamp, IUpdateTimestamp
 
     public string PreferredLanguage { get; set; } = "en";
 
+    /// <summary>When the developer was emailed that this person is interested. Empty until then.</summary>
+    public DateTimeOffset? InterestNotifiedAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
