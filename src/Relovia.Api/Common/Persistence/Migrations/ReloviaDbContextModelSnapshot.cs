@@ -45,6 +45,198 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.ToTable("data_protection_keys", (string)null);
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.Budget", b =>
+                {
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("RelocationId")
+                        .HasName("pk_budgets");
+
+                    b.ToTable("budgets", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_budgets_currency_code", "currency_code ~ '^[A-Z]{3}$'");
+                        });
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.BudgetCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_budget_categories");
+
+                    b.HasAlternateKey("RelocationId", "Id")
+                        .HasName("ak_budget_categories_relocation_id_id");
+
+                    b.HasIndex("RelocationId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_budget_categories_relocation_id_name");
+
+                    b.ToTable("budget_categories", (string)null);
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.BudgetEstimate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("label");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_budget_estimates");
+
+                    b.HasIndex("RelocationId", "CategoryId")
+                        .HasDatabaseName("ix_budget_estimates_relocation_id_category_id");
+
+                    b.ToTable("budget_estimates", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_budget_estimates_amount", "amount > 0");
+
+                            t.HasCheckConstraint("ck_budget_estimates_currency_code", "currency_code ~ '^[A-Z]{3}$'");
+                        });
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.Expense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateOnly>("PaidOn")
+                        .HasColumnType("date")
+                        .HasColumnName("paid_on");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_expenses");
+
+                    b.HasIndex("TaskId")
+                        .HasDatabaseName("ix_expenses_task_id");
+
+                    b.HasIndex("RelocationId", "CategoryId")
+                        .HasDatabaseName("ix_expenses_relocation_id_category_id");
+
+                    b.HasIndex("RelocationId", "PaidOn")
+                        .HasDatabaseName("ix_expenses_relocation_id_paid_on");
+
+                    b.ToTable("expenses", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_expenses_amount", "amount > 0");
+
+                            t.HasCheckConstraint("ck_expenses_currency_code", "currency_code ~ '^[A-Z]{3}$'");
+                        });
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Identity.AuthSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -734,6 +926,73 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.Budget", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
+                        .WithOne()
+                        .HasForeignKey("Relovia.Api.Features.Budgets.Budget", "RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_budgets_relocations_relocation_id");
+
+                    b.Navigation("Relocation");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.BudgetCategory", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Budgets.Budget", "Budget")
+                        .WithMany("Categories")
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_budget_categories_budgets_relocation_id");
+
+                    b.Navigation("Budget");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.BudgetEstimate", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Budgets.BudgetCategory", "Category")
+                        .WithMany("Estimates")
+                        .HasForeignKey("RelocationId", "CategoryId")
+                        .HasPrincipalKey("RelocationId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_budget_estimates_budget_categories_relocation_id_category_id");
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.Expense", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
+                        .WithMany()
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_expenses_relocations_relocation_id");
+
+                    b.HasOne("Relovia.Api.Features.Relocations.RelocationTask", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_expenses_relocation_tasks_task_id");
+
+                    b.HasOne("Relovia.Api.Features.Budgets.BudgetCategory", "Category")
+                        .WithMany("Expenses")
+                        .HasForeignKey("RelocationId", "CategoryId")
+                        .HasPrincipalKey("RelocationId", "Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_expenses_budget_categories_relocation_id_category_id");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Relocation");
+
+                    b.Navigation("Task");
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Identity.AuthSession", b =>
                 {
                     b.HasOne("Relovia.Api.Features.Identity.User", "User")
@@ -835,6 +1094,18 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasConstraintName("fk_task_template_dependencies_task_templates_task_template_id");
 
                     b.Navigation("TaskTemplate");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.Budget", b =>
+                {
+                    b.Navigation("Categories");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Budgets.BudgetCategory", b =>
+                {
+                    b.Navigation("Estimates");
+
+                    b.Navigation("Expenses");
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Identity.User", b =>

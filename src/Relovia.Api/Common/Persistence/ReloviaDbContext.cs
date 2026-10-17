@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Relocations;
 
@@ -27,6 +28,14 @@ public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> 
     public DbSet<RelocationTask> RelocationTasks => Set<RelocationTask>();
 
     public DbSet<TaskDependency> TaskDependencies => Set<TaskDependency>();
+
+    public DbSet<Budget> Budgets => Set<Budget>();
+
+    public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
+
+    public DbSet<BudgetEstimate> BudgetEstimates => Set<BudgetEstimate>();
+
+    public DbSet<Expense> Expenses => Set<Expense>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
