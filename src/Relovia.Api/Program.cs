@@ -98,7 +98,12 @@ builder.Services.AddScoped<ExternalAccountService>();
 builder.Services.AddOptions<AccessSettings>().Bind(builder.Configuration.GetSection(AccessSettings.SectionName));
 builder.Services.AddOptions<EmailSettings>().Bind(builder.Configuration.GetSection(EmailSettings.SectionName));
 builder.Services.AddSingleton<AccessPolicy>();
-builder.Services.AddScoped<IInterestNotifier, SmtpInterestNotifier>();
+builder.Services.AddHttpClient<IInterestNotifier, ResendInterestNotifier>(client =>
+{
+    client.BaseAddress = new Uri("https://api.resend.com/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.app)");
+});
 builder.Services.AddScoped<InterestService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<GeoNamesCityListSource>(client =>

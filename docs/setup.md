@@ -81,11 +81,8 @@ ASP.NET Core configuration. Environment variables use `__` between nested keys, 
 | `Authentication:Google:ClientSecret` | For Google sign-in | OAuth client secret. |
 | `Access:Restricted` | No | Default `true`. While true, only `Access:AllowedEmails` can use the API: every other signed-in user gets `403` and `hasAccess: false` from `GET /api/auth/me`. Set to `false` to open the app to everyone. |
 | `Access:AllowedEmails` | No | Google accounts that can use the app while it is restricted, and that receive the "someone is interested" email. `appsettings.json` lists `rcschlosser@miuandes.cl`. Environment variables: `Access__AllowedEmails__0`, `Access__AllowedEmails__1`. |
-| `Email:Host` | For the interest email | SMTP server. Without it nobody is emailed; the API logs a warning and tries again the next time that person signs in. |
-| `Email:Port` | No | Default `587` (STARTTLS). `465` uses implicit TLS. |
-| `Email:Username` | For the interest email | SMTP login. |
-| `Email:Password` | For the interest email | SMTP password. For Gmail, use an app password. Keep it out of Git. |
-| `Email:From` | No | Sender address. Defaults to `Email:Username`. |
+| `Email:ApiKey` | For the interest email | [Resend](https://resend.com) API key. Without it nobody is emailed; the API logs a warning and tries again the next time that person signs in. Keep it out of Git. |
+| `Email:From` | No | Sender. Default `Relovia <onboarding@resend.dev>`, which only delivers to the Resend account owner. Use an address on a verified domain to email anyone else. |
 | `Session:SlidingLifetime` | No | Default `14.00:00:00`. Must be positive. |
 | `Session:AbsoluteLifetime` | No | Default `30.00:00:00`. Must cover the sliding lifetime. |
 | `ASPNETCORE_ENVIRONMENT` | No | `Development` turns on user secrets, OpenAPI, and Scalar. |
@@ -115,14 +112,13 @@ Render environment variables:
 | `Authentication__Google__ClientId` | OAuth web client id |
 | `Authentication__Google__ClientSecret` | OAuth web client secret |
 
-Add the SMTP settings below so the developer is emailed when someone signs in to show interest:
+Add the Resend key so the developer is emailed when someone signs in to show interest:
 
 | Variable | Value |
 | --- | --- |
-| `Email__Host` | SMTP host, for example `smtp.gmail.com` |
-| `Email__Port` | `587` |
-| `Email__Username` | SMTP login |
-| `Email__Password` | SMTP password or app password |
+| `Email__ApiKey` | Resend API key |
+
+Email goes to Resend over HTTPS, not SMTP: Render's free tier blocks outbound SMTP ports, so a connection to a mail server just times out. Create the Resend account with an address listed in `Access:AllowedEmails`. Resend's test sender (`onboarding@resend.dev`, the default) can only deliver to the address that owns the account.
 
 `GET /health` checks the database. Changing an environment variable takes effect after a new deploy.
 
