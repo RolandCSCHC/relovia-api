@@ -12,6 +12,7 @@ using Relovia.Api.Common.Health;
 using Relovia.Api.Common.OpenApi;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
+using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Places;
@@ -111,6 +112,8 @@ builder.Services.AddScoped<ICityListSource>(provider => provider.GetRequiredServ
 builder.Services.AddScoped<CityCatalog>();
 builder.Services.AddScoped<RelocationService>();
 builder.Services.AddScoped<ChecklistService>();
+builder.Services.AddScoped<BudgetService>();
+builder.Services.AddScoped<ExpenseService>();
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
 var authentication = builder.Services.AddAuthentication(options =>
