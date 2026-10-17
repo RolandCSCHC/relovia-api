@@ -4,11 +4,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
+using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Places;
 using Relovia.Api.Features.Relocations;
@@ -366,6 +369,11 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             builder.UseSetting("ConnectionStrings:Relovia", _connectionString);
             builder.UseSetting(GeoNamesCityListSource.CitiesFileKey, _citiesFile);
             builder.UseSetting(GeoNamesCityListSource.Admin1FileKey, _admin1File);
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IExchangeRateProvider>();
+                services.AddScoped<IExchangeRateProvider, FakeRateProvider>();
+            });
         }
     }
 
