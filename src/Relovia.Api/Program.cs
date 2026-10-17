@@ -12,6 +12,7 @@ using Relovia.Api.Common.Health;
 using Relovia.Api.Common.OpenApi;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
+using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Places;
 using Relovia.Api.Features.Relocations;
@@ -98,6 +99,14 @@ builder.Services.AddHttpClient<GeoNamesCityListSource>(client =>
     client.Timeout = TimeSpan.FromSeconds(60);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.app)");
 });
+builder.Services.AddHttpClient<OpenErApiRateProvider>(client =>
+{
+    client.BaseAddress = new Uri("https://open.er-api.com/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.app)");
+});
+builder.Services.AddScoped<IExchangeRateProvider>(provider => provider.GetRequiredService<OpenErApiRateProvider>());
+builder.Services.AddScoped<ExchangeRateService>();
 builder.Services.AddScoped<ICityListSource>(provider => provider.GetRequiredService<GeoNamesCityListSource>());
 builder.Services.AddScoped<CityCatalog>();
 builder.Services.AddScoped<RelocationService>();
