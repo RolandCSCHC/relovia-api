@@ -23,7 +23,7 @@ One project, `src/Relovia.Api`. Feature code lives under `Features`. Cross-cutti
 
 There is no separate Domain, Application, or Infrastructure project, no generic repository, and no ASP.NET Core Identity. `ReloviaDbContext` is the data access layer. Business rules live in feature services.
 
-Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) and `Features/Relocations` (`Relocation`, `ChecklistTemplate`, `TaskTemplate`, `RelocationTask`, `TaskDependency`).
+Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) and `Features/Relocations` (`Relocation`, `ChecklistTemplate`, `TaskTemplate`, `RelocationTask`, `TaskDependency`), `Features/Budgets` (`Budget`, `BudgetCategory`, `BudgetEstimate`, `Expense`), and `Features/ExchangeRates` (rate provider and cache).
 
 ## Persistence
 
@@ -38,6 +38,8 @@ Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) a
 - A checklist template is identified by a stable `code` and a `version`. Task `code`s are unique inside that template, and each task records the codes it depends on. A published version cannot be changed. Priority is `Low`, `Normal`, or `High`.
 - Version 1 of `domestic-core` and `international-core` is published in the migrations. Neither sets a destination country or a purpose, so selection can match any move of that scope.
 - Selection keeps published templates whose scope is the move's derived type or `Both`. A destination country or purpose on the template applies only when it is set. Each template code contributes its highest published version. Tasks that share a code become one task: a set destination country outranks a set purpose, either outranks a template with both unset, and a tie keeps the template code that sorts first. Dependency codes from the copies are combined, and a code with no selected task is dropped.
+- A budget belongs to one relocation (`budgets.relocation_id` is the key) and has a three-letter currency code. Categories, estimates, and expenses reference `(relocation_id, category_id)`, so they cannot point at another relocation's category. Deleting a relocation removes its budget, categories, estimates, and expenses. An estimate goes with its category; a category that still has expenses cannot be deleted. An expense's `task_id` uses `ON DELETE SET NULL`, and the service checks that the task belongs to the same relocation.
+- Money is `numeric(18,4)`, always greater than zero. Estimates and expenses each store the amount and currency the user entered, and that original is never overwritten. Converted amounts are computed on read and not stored.
 
 ## Authentication
 
@@ -62,6 +64,12 @@ Endpoints require an authenticated session unless they opt out. `GET /api/auth/g
 `GET /api/relocations/{id}/checklist` returns the suggested tasks and does not write them. When the relocation has a target date, the due date is that date minus `daysBeforeMove`. Destination city and target date can be left empty, and the due date stays empty until a target date is saved. `POST` confirms the tasks the caller kept. A code must come from that suggestion; an omitted task is left out, and a dependency that points at an omitted task is dropped. Title, days before the move, phase, and priority can be changed in that request, and the due date is calculated again. A second confirm is rejected once tasks exist. Self-references, links across relocations, and cycles are rejected.
 
 `GET /api/relocations/{id}/tasks` lists those tasks and progress. Progress is `done / (todo + in progress + done)`. A dependency is satisfied when the prerequisite is `Done` or `Skipped`. `POST` adds a task that starts as `Todo`. `PUT /api/relocations/{id}/tasks/{taskId}` updates the title, due date, phase, priority, and status. `DELETE` removes that task and the dependency links that mention it. The template is left unchanged.
+
+`GET /api/relocations/{id}/budget` returns the budget currency, each category with its estimates, and the estimate versus actual comparison in that currency: `estimated`, `actual`, and `remaining` (estimated minus actual) per category and in total. `currencyCode` is `null` until the budget is set up. `PUT` on the same path sets the currency; the first call creates the budget with starter categories. The budget currency is only what totals are shown in, so it can change at any time without altering an estimate or expense. Each estimate and expense has its own currency. Amounts in another currency are converted into the budget currency with the latest exchange rates, so past totals move when rates move. Each item carries its original `amount` and `currencyCode` plus `convertedAmount`, which is `null` when there is no rate. An amount without a rate is left out of the totals and listed per currency in `unconverted`. `ratesAsOf` is when the provider last updated the rates, and `ratesUnavailable` is true when conversions were needed and no rates could be loaded. Categories (`/budget/categories`) and estimates (`/budget/estimates`) have create, update, and delete. Category names are unique per relocation, ignoring case.
+
+`/api/relocations/{id}/expenses` lists (newest first), creates, updates, and deletes expenses. An expense has a category, an optional task, a description, an amount, a currency, the date it was paid, and optional notes. Another user's relocation, or a category or task from a different relocation, is rejected. Each expense also returns `convertedAmount`, its value in the budget currency at the latest rate.
+
+Exchange rates come from `open.er-api.com` (free, no key, updated once a day, latest rates only) behind `IExchangeRateProvider`. `ExchangeRateService` caches them in memory for six hours per base currency, and if a refresh fails it serves the last rates for up to seven days. Rates are only requested when something is in a currency other than the budget currency. The provider's terms ask for attribution to exchangerate-api.com wherever rates are shown, which the budget screen does not currently do. Tests replace the provider with fixed rates.
 
 ## Hosts
 
