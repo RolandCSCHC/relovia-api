@@ -120,7 +120,19 @@ One-time setup: add a repository secret named `MIGRATION_CONNECTION_STRING` (Git
 Host=<direct-host>;Database=relovia;Username=relovia_owner;Password=<password>;SSL Mode=Require
 ```
 
-If the secret is missing the job fails with a message saying so. To avoid new code running before its schema exists, set the Render service's Auto-Deploy to "After CI Checks Pass" so a deploy waits for this job. Write migrations so the previous API version still works against the new schema (add before you remove) so a failed or slow deploy never leaves production broken.
+If the secret is missing the job fails with a message saying so.
+
+### Production deploys
+
+The `Deploy to Render` job runs after `Migrate production database` and calls the Render deploy hook, so new code never starts before its schema exists. Render's own "After CI Checks Pass" setting is not used: it waits for every GitHub check suite on the commit, and an app that leaves a suite queued forever (DigitalOcean, GitGuardian) blocks the deploy.
+
+One-time setup:
+
+1. In Render, open the service, Settings, Deploy, and copy the **Deploy Hook** URL.
+2. Add it as a repository secret named `RENDER_DEPLOY_HOOK` (GitHub: Settings, Secrets and variables, Actions). Treat it like a password, because anyone with the URL can trigger a deploy.
+3. In the same Render section, set **Auto-Deploy** to **Off**. Otherwise Render also deploys on its own and the migration ordering is lost.
+
+If the secret is missing the job fails with a message saying so, after the migrations have already run. Write migrations so the previous API version still works against the new schema (add before you remove) so a failed or slow deploy never leaves production broken.
 
 ## Tests
 

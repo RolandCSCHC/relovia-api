@@ -58,3 +58,21 @@ jobs:
       - name: Apply pending migrations
         working-directory: src/Relovia.Api
         run: dotnet ef database update
+
+  deploy:
+    name: Deploy to Render
+    needs: migrate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger the Render deploy hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::error::Add the RENDER_DEPLOY_HOOK repository secret (Render service Settings, Deploy Hook)."
+            exit 1
+          fi
+          curl --fail --silent --show-error --max-time 30 --request POST "$RENDER_DEPLOY_HOOK" > /dev/null
+          echo "Render deploy requested."
