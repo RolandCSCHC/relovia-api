@@ -10,7 +10,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A pushed run may be applying migrations, so only pull request runs are cancelled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -30,3 +31,30 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build --tag relovia-api:ci .
+
+  migrate:
+    name: Migrate production database
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Relovia: ${{ secrets.MIGRATION_CONNECTION_STRING }}
+    steps:
+      - name: Require the migration connection string
+        run: |
+          if [ -z "$ConnectionStrings__Relovia" ]; then
+            echo "::error::Add the MIGRATION_CONNECTION_STRING repository secret (Neon direct host, not the pooler)."
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: dotnet tool restore
+      - name: Restore packages
+        run: dotnet restore src/Relovia.Api/Relovia.Api.csproj
+      - name: Apply pending migrations
+        working-directory: src/Relovia.Api
+        run: dotnet ef database update

@@ -27,7 +27,7 @@ Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) a
 
 ## Persistence
 
-- EF Core migrations only. The API does not migrate on startup.
+- EF Core migrations only. The API does not migrate on startup. CI applies pending migrations to production on every push to `main` (see `docs/setup.md`).
 - Snake_case column and table names.
 - UUID v7 primary keys.
 - Timestamps are `timestamptz`, written at microsecond precision so a reload matches the saved value. Calendar dates are `date`.

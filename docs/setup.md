@@ -110,6 +110,18 @@ Render environment variables:
 
 `GET /health` checks the database. Changing an environment variable takes effect after a new deploy.
 
+### Production migrations
+
+The `Migrate production database` job in `.github/workflows/ci.yml` runs `dotnet ef database update` against Neon on every push to `main`, after the tests pass. Pull requests never touch production. Already-applied migrations are skipped, so a run with nothing pending changes nothing.
+
+One-time setup: add a repository secret named `MIGRATION_CONNECTION_STRING` (GitHub: Settings, Secrets and variables, Actions). The value is a keyword connection string for the Neon **direct** host, the one without `-pooler`:
+
+```text
+Host=<direct-host>;Database=relovia;Username=relovia_owner;Password=<password>;SSL Mode=Require
+```
+
+If the secret is missing the job fails with a message saying so. To avoid new code running before its schema exists, set the Render service's Auto-Deploy to "After CI Checks Pass" so a deploy waits for this job. Write migrations so the previous API version still works against the new schema (add before you remove) so a failed or slow deploy never leaves production broken.
+
 ## Tests
 
 ```bash
