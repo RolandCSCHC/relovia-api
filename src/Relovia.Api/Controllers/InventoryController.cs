@@ -7,7 +7,7 @@ namespace Relovia.Api.Controllers;
 
 [ApiController]
 [Route("api/relocations/{relocationId:guid}/inventory")]
-public sealed class InventoryController(InventoryService inventory) : ControllerBase
+public sealed class InventoryController(InventoryService inventory, InventoryListService lists) : ControllerBase
 {
     [HttpGet]
     [EndpointName("listInventoryItems")]
@@ -22,6 +22,43 @@ public sealed class InventoryController(InventoryService inventory) : Controller
         }
 
         return Map(await inventory.ListAsync(userId, relocationId, cancellationToken), Ok);
+    }
+
+    [HttpGet("suggestion")]
+    [EndpointName("getInventorySuggestion")]
+    [EndpointSummary("Returns a room shopping list without writing items. Items already stored under the same code are left out.")]
+    public async Task<ActionResult<InventorySuggestionResponse>> Suggest(
+        Guid relocationId,
+        [FromQuery] Furnishing? furnishing,
+        [FromQuery] ItemRoom? room,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        return Map(
+            await lists.SuggestAsync(userId, relocationId, furnishing, room, cancellationToken),
+            Ok);
+    }
+
+    [HttpPost("suggestion")]
+    [EndpointName("confirmInventoryList")]
+    [EndpointSummary("Adds the selected list items as things to buy. Items already stored under the same code are skipped.")]
+    public async Task<ActionResult<IReadOnlyList<InventoryItemResponse>>> Confirm(
+        Guid relocationId,
+        ConfirmInventoryListRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        return Map(
+            await lists.ConfirmAsync(userId, relocationId, request, cancellationToken),
+            Ok);
     }
 
     [HttpPost]

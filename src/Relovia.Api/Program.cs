@@ -128,6 +128,7 @@ builder.Services.AddScoped<ChecklistService>();
 builder.Services.AddScoped<BudgetService>();
 builder.Services.AddScoped<ExpenseService>();
 builder.Services.AddScoped<InventoryService>();
+builder.Services.AddScoped<InventoryListService>();
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
 var authentication = builder.Services.AddAuthentication(options =>
