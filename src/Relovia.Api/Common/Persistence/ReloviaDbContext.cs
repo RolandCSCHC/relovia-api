@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.Identity;
+using Relovia.Api.Features.Inventory;
 using Relovia.Api.Features.Relocations;
 
 namespace Relovia.Api.Common.Persistence;
@@ -36,6 +37,8 @@ public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> 
     public DbSet<BudgetEstimate> BudgetEstimates => Set<BudgetEstimate>();
 
     public DbSet<Expense> Expenses => Set<Expense>();
+
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {

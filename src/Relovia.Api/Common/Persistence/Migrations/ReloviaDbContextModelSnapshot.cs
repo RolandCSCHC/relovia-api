@@ -385,6 +385,132 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Inventory.InventoryItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Acquisition")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("acquisition");
+
+                    b.Property<decimal?>("ActualPrice")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("actual_price");
+
+                    b.Property<Guid?>("BudgetCategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("budget_category_id");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<decimal?>("EstimatedPrice")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("estimated_price");
+
+                    b.Property<string>("MovingAction")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("moving_action");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("PackingStatus")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("packing_status");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("priority");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<string>("Room")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("room");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_inventory_items");
+
+                    b.HasIndex("BudgetCategoryId")
+                        .HasDatabaseName("ix_inventory_items_budget_category_id");
+
+                    b.HasIndex("RelocationId", "Room", "Name")
+                        .HasDatabaseName("ix_inventory_items_relocation_id_room_name");
+
+                    b.ToTable("inventory_items", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_inventory_items_acquisition", "acquisition IN ('Owned', 'ToPurchase')");
+
+                            t.HasCheckConstraint("ck_inventory_items_actual_price", "actual_price IS NULL OR actual_price > 0");
+
+                            t.HasCheckConstraint("ck_inventory_items_budget_category", "budget_category_id IS NULL OR acquisition = 'ToPurchase'");
+
+                            t.HasCheckConstraint("ck_inventory_items_category", "category IS NULL OR category IN ('Furniture', 'Appliances', 'Linens', 'Cookware', 'Electronics', 'Decor', 'Other')");
+
+                            t.HasCheckConstraint("ck_inventory_items_currency", "(\n    estimated_price IS NULL\n    AND actual_price IS NULL\n    AND currency_code IS NULL\n) OR (\n    currency_code ~ '^[A-Z]{3}$'\n    AND (estimated_price IS NOT NULL OR actual_price IS NOT NULL)\n)");
+
+                            t.HasCheckConstraint("ck_inventory_items_estimated_price", "estimated_price IS NULL OR estimated_price > 0");
+
+                            t.HasCheckConstraint("ck_inventory_items_moving_action", "moving_action IS NULL OR moving_action IN ('Bring', 'Sell', 'Donate', 'Store', 'Discard')");
+
+                            t.HasCheckConstraint("ck_inventory_items_name", "char_length(btrim(name)) > 0");
+
+                            t.HasCheckConstraint("ck_inventory_items_notes", "notes IS NULL OR char_length(btrim(notes)) > 0");
+
+                            t.HasCheckConstraint("ck_inventory_items_packing_matches_action", "(moving_action = 'Bring') = (packing_status IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_inventory_items_packing_status", "packing_status IS NULL OR packing_status IN ('NotPacked', 'Packed', 'Unpacked')");
+
+                            t.HasCheckConstraint("ck_inventory_items_priced_shopping", "acquisition <> 'ToPurchase' OR (estimated_price IS NULL AND actual_price IS NULL) OR budget_category_id IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_inventory_items_priority", "priority IN ('Low', 'Normal', 'High')");
+
+                            t.HasCheckConstraint("ck_inventory_items_quantity", "quantity >= 1 AND quantity <= 100000");
+
+                            t.HasCheckConstraint("ck_inventory_items_room", "room IS NULL OR room IN ('Kitchen', 'Bathroom', 'Bedroom', 'LivingRoom', 'DiningRoom', 'Office', 'Other')");
+                        });
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Relocations.ChecklistTemplate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1019,6 +1145,26 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasConstraintName("fk_external_logins_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Inventory.InventoryItem", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Budgets.BudgetCategory", "BudgetCategory")
+                        .WithMany()
+                        .HasForeignKey("BudgetCategoryId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_inventory_items_budget_categories_budget_category_id");
+
+                    b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
+                        .WithMany()
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventory_items_relocations_relocation_id");
+
+                    b.Navigation("BudgetCategory");
+
+                    b.Navigation("Relocation");
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Relocations.Relocation", b =>
