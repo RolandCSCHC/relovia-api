@@ -1,4 +1,5 @@
 using Relovia.Api.Features.ExchangeRates;
+using Relovia.Api.Features.Inventory;
 
 namespace Relovia.Api.Features.Budgets;
 
@@ -28,11 +29,13 @@ public static class BudgetComparison
     public static IReadOnlySet<string> ForeignCurrencies(
         string budgetCurrency,
         IEnumerable<BudgetCategory> categories,
-        IEnumerable<Expense> expenses)
+        IEnumerable<Expense> expenses,
+        IEnumerable<InventoryItem>? shopping = null)
     {
         return categories
             .SelectMany(category => category.Estimates.Select(estimate => estimate.CurrencyCode))
             .Concat(expenses.Select(expense => expense.CurrencyCode))
+            .Concat(PricedShopping(shopping).Select(item => item.CurrencyCode!))
             .Where(code => !string.Equals(code, budgetCurrency, StringComparison.Ordinal))
             .ToHashSet(StringComparer.Ordinal);
     }
@@ -46,10 +49,12 @@ public static class BudgetComparison
         string? currencyCode,
         IEnumerable<BudgetCategory> categories,
         IEnumerable<Expense> expenses,
-        ExchangeRateTable? rates)
+        ExchangeRateTable? rates,
+        IEnumerable<InventoryItem>? shopping = null)
     {
         var categoryList = categories.ToList();
         var expenseList = expenses.ToList();
+        var shoppingList = PricedShopping(shopping).ToList();
         if (currencyCode is null)
         {
             return new BudgetResponse(
@@ -84,9 +89,16 @@ public static class BudgetComparison
                         estimate.CurrencyCode,
                         Convert(estimate.Amount, estimate.CurrencyCode, currencyCode, rates)))
                     .ToArray();
-                var estimated = estimates.Sum(estimate => estimate.ConvertedAmount ?? 0);
+                var lines = shoppingList
+                    .Where(item => item.BudgetCategoryId == category.Id)
+                    .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(item => item.Id)
+                    .Select(item => Line(item, currencyCode, rates))
+                    .ToArray();
+                var estimated = estimates.Sum(estimate => estimate.ConvertedAmount ?? 0)
+                    + lines.Sum(line => line.ConvertedEstimated ?? 0);
                 var counted = countedByCategory[category.Id].ToList();
-                var actual = counted.Sum();
+                var actual = counted.Sum() + lines.Sum(line => line.ConvertedActual ?? 0);
                 return new BudgetCategoryResponse(
                     category.Id,
                     category.Name,
@@ -94,7 +106,8 @@ public static class BudgetComparison
                     estimated,
                     actual,
                     estimated - actual,
-                    counted.Count);
+                    counted.Count,
+                    lines);
             })
             .ToArray();
 
@@ -109,24 +122,39 @@ public static class BudgetComparison
             .Where(item => item.Converted is null)
             .Select(item => item.Expense)
             .ToList();
+        var unconvertedShopping = rows
+            .SelectMany(row => row.Shopping)
+            .Where(line =>
+                (line.EstimatedPrice is not null && line.ConvertedEstimated is null)
+                || (line.ActualPrice is not null && line.ConvertedActual is null))
+            .ToList();
         var unconverted = unconvertedEstimates.Select(estimate => estimate.CurrencyCode)
             .Concat(unconvertedExpenses.Select(expense => expense.CurrencyCode))
+            .Concat(unconvertedShopping.Select(line => line.CurrencyCode))
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .Select(code =>
             {
                 var expensesInCode = unconvertedExpenses.Where(expense => expense.CurrencyCode == code).ToList();
                 var estimatesInCode = unconvertedEstimates.Where(estimate => estimate.CurrencyCode == code).ToList();
+                var shoppingInCode = unconvertedShopping.Where(line => line.CurrencyCode == code).ToList();
                 return new UnconvertedAmountsResponse(
                     code,
                     expensesInCode.Count,
                     expensesInCode.Sum(expense => expense.Amount),
                     estimatesInCode.Count,
-                    estimatesInCode.Sum(estimate => estimate.Amount));
+                    estimatesInCode.Sum(estimate => estimate.Amount),
+                    shoppingInCode.Count,
+                    shoppingInCode
+                        .Where(line => line.EstimatedPrice is not null && line.ConvertedEstimated is null)
+                        .Sum(line => line.EstimatedPrice ?? 0),
+                    shoppingInCode
+                        .Where(line => line.ActualPrice is not null && line.ConvertedActual is null)
+                        .Sum(line => line.ActualPrice ?? 0));
             })
             .ToArray();
 
-        var needsRates = ForeignCurrencies(currencyCode, categoryList, expenseList).Count > 0;
+        var needsRates = ForeignCurrencies(currencyCode, categoryList, expenseList, shoppingList).Count > 0;
         return new BudgetResponse(
             currencyCode,
             rows,
@@ -134,5 +162,31 @@ public static class BudgetComparison
             unconverted,
             needsRates ? rates?.UpdatedAt : null,
             needsRates && rates is null);
+    }
+
+    /// <summary>To-purchase items with a budget category and a price. Owned items are not a new cost.</summary>
+    private static IEnumerable<InventoryItem> PricedShopping(IEnumerable<InventoryItem>? shopping)
+    {
+        return (shopping ?? []).Where(item =>
+            item.Acquisition == AcquisitionStatus.ToPurchase
+            && item.BudgetCategoryId is not null
+            && item.CurrencyCode is not null
+            && (item.EstimatedPrice is not null || item.ActualPrice is not null));
+    }
+
+    private static ShoppingLineResponse Line(InventoryItem item, string budgetCurrency, ExchangeRateTable? rates)
+    {
+        return new ShoppingLineResponse(
+            item.Id,
+            item.Name,
+            item.EstimatedPrice,
+            item.ActualPrice,
+            item.CurrencyCode!,
+            item.EstimatedPrice is { } estimated
+                ? Convert(estimated, item.CurrencyCode!, budgetCurrency, rates)
+                : null,
+            item.ActualPrice is { } actual
+                ? Convert(actual, item.CurrencyCode!, budgetCurrency, rates)
+                : null);
     }
 }

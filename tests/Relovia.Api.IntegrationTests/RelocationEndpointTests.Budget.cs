@@ -300,7 +300,7 @@ public sealed partial class RelocationEndpointTests
         Assert.Equal(100m, budget.Body.Totals.Estimated);
         Assert.Equal(0m, budget.Body.Totals.Actual);
         var row = Assert.Single(budget.Body.Unconverted);
-        Assert.Equal(("EUR", 1, 10m, 1, 40m), (row.CurrencyCode, row.ExpenseCount, row.ExpenseTotal, row.EstimateCount, row.EstimateTotal));
+        Assert.Equal(("EUR", 1, 10m, 1, 40m, 0, 0m, 0m), (row.CurrencyCode, row.ExpenseCount, row.ExpenseTotal, row.EstimateCount, row.EstimateTotal, row.ShoppingCount, row.ShoppingEstimated, row.ShoppingSpent));
     }
 
     [Fact]

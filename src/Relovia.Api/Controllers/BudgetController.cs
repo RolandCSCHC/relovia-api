@@ -9,7 +9,7 @@ public sealed class BudgetController(BudgetService budgets) : BudgetControllerBa
 {
     [HttpGet]
     [EndpointName("getBudget")]
-    [EndpointSummary("Returns the relocation's budget with estimates compared to actual expenses.")]
+    [EndpointSummary("Returns the relocation's budget. Estimates, expenses, and prices of items still to buy are compared in the budget currency.")]
     public async Task<ActionResult<BudgetResponse>> Get(Guid relocationId, CancellationToken cancellationToken)
     {
         if (!TryGetUserId(out var userId))
@@ -75,7 +75,7 @@ public sealed class BudgetController(BudgetService budgets) : BudgetControllerBa
 
     [HttpDelete("categories/{categoryId:guid}")]
     [EndpointName("deleteBudgetCategory")]
-    [EndpointSummary("Deletes a budget category and its estimates. Categories with expenses are refused.")]
+    [EndpointSummary("Deletes a budget category and its estimates. Categories with expenses or shopping items are refused.")]
     public async Task<IActionResult> DeleteCategory(
         Guid relocationId,
         Guid categoryId,

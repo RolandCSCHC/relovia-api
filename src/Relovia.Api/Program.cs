@@ -17,6 +17,7 @@ using Relovia.Api.Features.Access;
 using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
+using Relovia.Api.Features.Inventory;
 using Relovia.Api.Features.Places;
 using Relovia.Api.Features.Relocations;
 using Scalar.AspNetCore;
@@ -126,6 +127,7 @@ builder.Services.AddScoped<RelocationService>();
 builder.Services.AddScoped<ChecklistService>();
 builder.Services.AddScoped<BudgetService>();
 builder.Services.AddScoped<ExpenseService>();
+builder.Services.AddScoped<InventoryService>();
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
 var authentication = builder.Services.AddAuthentication(options =>

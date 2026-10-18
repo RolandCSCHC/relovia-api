@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Features.ExchangeRates;
+using Relovia.Api.Features.Inventory;
 
 namespace Relovia.Api.Features.Budgets;
 
@@ -14,7 +15,7 @@ public sealed class BudgetService(ReloviaDbContext db, ExchangeRateService excha
 
     public const string BudgetNotSetUpTitle = "Set the budget currency first.";
 
-    public const string CategoryInUseTitle = "Move or delete this category's expenses first.";
+    public const string CategoryInUseTitle = "Move or delete this category's expenses and shopping items first.";
 
     public async Task<BudgetResult<BudgetResponse>> GetAsync(
         Guid userId,
@@ -170,7 +171,10 @@ public sealed class BudgetService(ReloviaDbContext db, ExchangeRateService excha
         var hasExpenses = await db.Expenses.AnyAsync(
             expense => expense.RelocationId == relocationId && expense.CategoryId == category.Id,
             cancellationToken);
-        if (hasExpenses)
+        var hasShopping = await db.InventoryItems.AnyAsync(
+            item => item.RelocationId == relocationId && item.BudgetCategoryId == category.Id,
+            cancellationToken);
+        if (hasExpenses || hasShopping)
         {
             return new BudgetResult<Guid>.Conflict(CategoryInUseTitle);
         }
@@ -330,16 +334,19 @@ public sealed class BudgetService(ReloviaDbContext db, ExchangeRateService excha
         var expenses = await db.Expenses.AsNoTracking()
             .Where(expense => expense.RelocationId == relocationId)
             .ToListAsync(cancellationToken);
+        var shopping = await db.InventoryItems.AsNoTracking()
+            .Where(item => item.RelocationId == relocationId)
+            .ToListAsync(cancellationToken);
 
         // Rates are only requested when something is in another currency.
         ExchangeRateTable? rates = null;
         if (currencyCode is not null
-            && BudgetComparison.ForeignCurrencies(currencyCode, categories, expenses).Count > 0)
+            && BudgetComparison.ForeignCurrencies(currencyCode, categories, expenses, shopping).Count > 0)
         {
             rates = await exchangeRates.GetAsync(currencyCode, cancellationToken);
         }
 
-        return BudgetComparison.Build(currencyCode, categories, expenses, rates);
+        return BudgetComparison.Build(currencyCode, categories, expenses, rates, shopping);
     }
 
     private async Task<BudgetCategoryResponse> CategoryResponseAsync(

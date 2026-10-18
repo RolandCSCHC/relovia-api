@@ -22,7 +22,18 @@ public sealed record BudgetCategoryResponse(
     decimal Estimated,
     decimal Actual,
     decimal Remaining,
-    int ExpenseCount);
+    int ExpenseCount,
+    IReadOnlyList<ShoppingLineResponse> Shopping);
+
+/// <summary>A to-purchase inventory item counted in this category. Prices are the originals.</summary>
+public sealed record ShoppingLineResponse(
+    Guid ItemId,
+    string Name,
+    decimal? EstimatedPrice,
+    decimal? ActualPrice,
+    string CurrencyCode,
+    decimal? ConvertedEstimated,
+    decimal? ConvertedActual);
 
 /// <param name="ConvertedAmount">The amount in the budget currency, or null when there is no rate for its currency.</param>
 public sealed record BudgetEstimateResponse(
@@ -40,7 +51,10 @@ public sealed record UnconvertedAmountsResponse(
     int ExpenseCount,
     decimal ExpenseTotal,
     int EstimateCount,
-    decimal EstimateTotal);
+    decimal EstimateTotal,
+    int ShoppingCount,
+    decimal ShoppingEstimated,
+    decimal ShoppingSpent);
 
 /// <param name="ConvertedAmount">The amount in the budget currency at the latest rate, or null when it cannot be converted.</param>
 public sealed record ExpenseResponse(

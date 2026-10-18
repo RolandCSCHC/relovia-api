@@ -1,5 +1,6 @@
 using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.ExchangeRates;
+using Relovia.Api.Features.Inventory;
 
 namespace Relovia.Api.UnitTests;
 
@@ -121,7 +122,7 @@ public sealed class BudgetComparisonTests
         Assert.Equal(1, response.Categories[0].ExpenseCount);
         Assert.Null(response.Categories[0].Estimates.Single(estimate => estimate.Label == "Storage").ConvertedAmount);
         var row = Assert.Single(response.Unconverted);
-        Assert.Equal(("XTS", 2, 100m, 1, 90m), (row.CurrencyCode, row.ExpenseCount, row.ExpenseTotal, row.EstimateCount, row.EstimateTotal));
+        Assert.Equal(("XTS", 2, 100m, 1, 90m, 0, 0m, 0m), (row.CurrencyCode, row.ExpenseCount, row.ExpenseTotal, row.EstimateCount, row.EstimateTotal, row.ShoppingCount, row.ShoppingEstimated, row.ShoppingSpent));
     }
 
     [Fact]
@@ -139,6 +140,30 @@ public sealed class BudgetComparisonTests
         Assert.True(response.RatesUnavailable);
         Assert.Null(response.RatesAsOf);
         Assert.Equal(["NZD"], response.Unconverted.Select(row => row.CurrencyCode));
+    }
+
+    [Fact]
+    public void A_purchase_counts_in_its_budget_category_and_an_owned_item_does_not()
+    {
+        _furnishing.Estimates.Add(Estimate(_furnishing, "Deposit on the sofa", 100, "EUR"));
+
+        var response = BudgetComparison.Build(
+            "EUR",
+            [_furnishing],
+            [],
+            null,
+            [
+                Shopping(_furnishing, "Lamp", AcquisitionStatus.ToPurchase, 40, 45.5m, "EUR"),
+                Shopping(_furnishing, "Sofa", AcquisitionStatus.Owned, 1200, null, "EUR"),
+            ]);
+
+        var furnishing = Assert.Single(response.Categories);
+        Assert.Equal(140m, furnishing.Estimated);
+        Assert.Equal(45.5m, furnishing.Actual);
+        var line = Assert.Single(furnishing.Shopping);
+        Assert.Equal("Lamp", line.Name);
+        Assert.Equal(40m, line.ConvertedEstimated);
+        Assert.Equal(45.5m, line.ConvertedActual);
     }
 
     [Fact]
@@ -190,6 +215,28 @@ public sealed class BudgetComparisonTests
             Amount = amount,
             CurrencyCode = currency,
             PaidOn = new DateOnly(2026, 11, 1),
+        };
+    }
+
+    private static InventoryItem Shopping(
+        BudgetCategory category,
+        string name,
+        AcquisitionStatus acquisition,
+        decimal? estimated,
+        decimal? actual,
+        string currency)
+    {
+        return new InventoryItem
+        {
+            RelocationId = RelocationId,
+            Name = name,
+            Quantity = 1,
+            Acquisition = acquisition,
+            Priority = ItemPriority.Normal,
+            EstimatedPrice = estimated,
+            ActualPrice = actual,
+            CurrencyCode = currency,
+            BudgetCategoryId = acquisition == AcquisitionStatus.ToPurchase ? category.Id : null,
         };
     }
 }
