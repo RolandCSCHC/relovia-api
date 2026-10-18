@@ -411,6 +411,11 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("category");
 
+                    b.Property<string>("Code")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("created_at");
@@ -464,6 +469,10 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("room");
 
+                    b.Property<Guid?>("SourceTemplateItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_template_item_id");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at");
@@ -473,6 +482,14 @@ namespace Relovia.Api.Common.Persistence.Migrations
 
                     b.HasIndex("BudgetCategoryId")
                         .HasDatabaseName("ix_inventory_items_budget_category_id");
+
+                    b.HasIndex("SourceTemplateItemId")
+                        .HasDatabaseName("ix_inventory_items_source_template_item_id");
+
+                    b.HasIndex("RelocationId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_inventory_items_relocation_id_code")
+                        .HasFilter("code IS NOT NULL");
 
                     b.HasIndex("RelocationId", "Room", "Name")
                         .HasDatabaseName("ix_inventory_items_relocation_id_room_name");
@@ -486,6 +503,8 @@ namespace Relovia.Api.Common.Persistence.Migrations
                             t.HasCheckConstraint("ck_inventory_items_budget_category", "budget_category_id IS NULL OR acquisition = 'ToPurchase'");
 
                             t.HasCheckConstraint("ck_inventory_items_category", "category IS NULL OR category IN ('Furniture', 'Appliances', 'Linens', 'Cookware', 'Electronics', 'Decor', 'Other')");
+
+                            t.HasCheckConstraint("ck_inventory_items_code", "code IS NULL OR code ~ '^[A-Za-z0-9_-]+$'");
 
                             t.HasCheckConstraint("ck_inventory_items_currency", "(\n    estimated_price IS NULL\n    AND actual_price IS NULL\n    AND currency_code IS NULL\n) OR (\n    currency_code ~ '^[A-Z]{3}$'\n    AND (estimated_price IS NOT NULL OR actual_price IS NOT NULL)\n)");
 
@@ -508,6 +527,650 @@ namespace Relovia.Api.Common.Persistence.Migrations
                             t.HasCheckConstraint("ck_inventory_items_quantity", "quantity >= 1 AND quantity <= 100000");
 
                             t.HasCheckConstraint("ck_inventory_items_room", "room IS NULL OR room IN ('Kitchen', 'Bathroom', 'Bedroom', 'LivingRoom', 'DiningRoom', 'Office', 'Other')");
+                        });
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Inventory.InventoryListTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("published_at");
+
+                    b.Property<string>("Room")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("room");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("scope");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_inventory_list_templates");
+
+                    b.HasIndex("Code", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ux_inventory_list_templates_code_version");
+
+                    b.ToTable("inventory_list_templates", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_inventory_list_templates_code", "code ~ '^[A-Za-z0-9_-]+$'");
+
+                            t.HasCheckConstraint("ck_inventory_list_templates_room", "room IN ('Kitchen', 'Bathroom', 'Bedroom', 'LivingRoom', 'DiningRoom', 'Office', 'Other')");
+
+                            t.HasCheckConstraint("ck_inventory_list_templates_scope", "scope IN ('Furnished', 'Unfurnished', 'Both')");
+
+                            t.HasCheckConstraint("ck_inventory_list_templates_title", "char_length(btrim(title)) > 0");
+
+                            t.HasCheckConstraint("ck_inventory_list_templates_version", "version >= 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000001"),
+                            Code = "bathroom-basics",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Room = "Bathroom",
+                            Scope = "Both",
+                            Title = "Bathroom basics",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000002"),
+                            Code = "bedroom-basics",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Room = "Bedroom",
+                            Scope = "Both",
+                            Title = "Bedroom basics",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Code = "kitchen-basics",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Room = "Kitchen",
+                            Scope = "Both",
+                            Title = "Kitchen basics",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000004"),
+                            Code = "bedroom-furniture",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Room = "Bedroom",
+                            Scope = "Unfurnished",
+                            Title = "Bedroom furniture",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000005"),
+                            Code = "kitchen-appliances",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Room = "Kitchen",
+                            Scope = "Unfurnished",
+                            Title = "Kitchen appliances",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000006"),
+                            Code = "living-room",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Room = "LivingRoom",
+                            Scope = "Unfurnished",
+                            Title = "Living room",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000007"),
+                            Code = "dining-room",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Room = "DiningRoom",
+                            Scope = "Unfurnished",
+                            Title = "Dining room",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000008"),
+                            Code = "office",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            PublishedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Room = "Office",
+                            Scope = "Unfurnished",
+                            Title = "Office",
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Version = 1
+                        });
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Inventory.InventoryTemplateItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("category");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("InventoryListTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_list_template_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("priority");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_inventory_template_items");
+
+                    b.HasIndex("InventoryListTemplateId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_inventory_template_items_template_id_code");
+
+                    b.ToTable("inventory_template_items", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_inventory_template_items_category", "category IN ('Furniture', 'Appliances', 'Linens', 'Cookware', 'Electronics', 'Decor', 'Other')");
+
+                            t.HasCheckConstraint("ck_inventory_template_items_code", "code ~ '^[A-Za-z0-9_-]+$'");
+
+                            t.HasCheckConstraint("ck_inventory_template_items_name", "char_length(btrim(name)) > 0");
+
+                            t.HasCheckConstraint("ck_inventory_template_items_priority", "priority IN ('Low', 'Normal', 'High')");
+
+                            t.HasCheckConstraint("ck_inventory_template_items_quantity", "quantity >= 1 AND quantity <= 100000");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000101"),
+                            Category = "Linens",
+                            Code = "bath-towels",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000001"),
+                            Name = "Bath towels",
+                            Priority = "Normal",
+                            Quantity = 4,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000102"),
+                            Category = "Linens",
+                            Code = "hand-towels",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000001"),
+                            Name = "Hand towels",
+                            Priority = "Normal",
+                            Quantity = 2,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000103"),
+                            Category = "Other",
+                            Code = "toilet-brush",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000001"),
+                            Name = "Toilet brush",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000104"),
+                            Category = "Linens",
+                            Code = "bath-mat",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000001"),
+                            Name = "Bath mat",
+                            Priority = "Low",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000111"),
+                            Category = "Linens",
+                            Code = "bed-sheets",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000002"),
+                            Name = "Bed sheets",
+                            Priority = "High",
+                            Quantity = 2,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000112"),
+                            Category = "Linens",
+                            Code = "duvet",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000002"),
+                            Name = "Duvet",
+                            Priority = "High",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000113"),
+                            Category = "Linens",
+                            Code = "pillows",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000002"),
+                            Name = "Pillows",
+                            Priority = "High",
+                            Quantity = 2,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000114"),
+                            Category = "Other",
+                            Code = "hangers",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000002"),
+                            Name = "Hangers",
+                            Priority = "Normal",
+                            Quantity = 20,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000115"),
+                            Category = "Other",
+                            Code = "laundry-basket",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000002"),
+                            Name = "Laundry basket",
+                            Priority = "Low",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000121"),
+                            Category = "Cookware",
+                            Code = "frying-pan",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Frying pan",
+                            Priority = "High",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000122"),
+                            Category = "Cookware",
+                            Code = "saucepan",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Saucepan",
+                            Priority = "High",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000123"),
+                            Category = "Cookware",
+                            Code = "knife",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Chef's knife",
+                            Priority = "High",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000124"),
+                            Category = "Cookware",
+                            Code = "cutting-board",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Cutting board",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000125"),
+                            Category = "Cookware",
+                            Code = "plates",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Plates",
+                            Priority = "Normal",
+                            Quantity = 4,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000126"),
+                            Category = "Cookware",
+                            Code = "bowls",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Bowls",
+                            Priority = "Normal",
+                            Quantity = 4,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000127"),
+                            Category = "Cookware",
+                            Code = "glasses",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Glasses",
+                            Priority = "Normal",
+                            Quantity = 4,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000128"),
+                            Category = "Cookware",
+                            Code = "cutlery",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Cutlery",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000129"),
+                            Category = "Appliances",
+                            Code = "kettle",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Kettle",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000130"),
+                            Category = "Other",
+                            Code = "bin",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Bin",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000131"),
+                            Category = "Linens",
+                            Code = "tea-towels",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000003"),
+                            Name = "Tea towels",
+                            Priority = "Low",
+                            Quantity = 2,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000141"),
+                            Category = "Furniture",
+                            Code = "bed-frame",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000004"),
+                            Name = "Bed frame",
+                            Priority = "High",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000142"),
+                            Category = "Furniture",
+                            Code = "mattress",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000004"),
+                            Name = "Mattress",
+                            Priority = "High",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000143"),
+                            Category = "Furniture",
+                            Code = "wardrobe",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000004"),
+                            Name = "Wardrobe",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000151"),
+                            Category = "Appliances",
+                            Code = "fridge",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000005"),
+                            Name = "Fridge",
+                            Priority = "High",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000152"),
+                            Category = "Appliances",
+                            Code = "cooker",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000005"),
+                            Name = "Cooker",
+                            Priority = "High",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000153"),
+                            Category = "Appliances",
+                            Code = "microwave",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000005"),
+                            Name = "Microwave",
+                            Priority = "Low",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000161"),
+                            Category = "Furniture",
+                            Code = "sofa",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000006"),
+                            Name = "Sofa",
+                            Priority = "High",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000162"),
+                            Category = "Furniture",
+                            Code = "coffee-table",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000006"),
+                            Name = "Coffee table",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000163"),
+                            Category = "Decor",
+                            Code = "floor-lamp",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000006"),
+                            Name = "Floor lamp",
+                            Priority = "Low",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000164"),
+                            Category = "Decor",
+                            Code = "curtains",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000006"),
+                            Name = "Curtains",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000171"),
+                            Category = "Furniture",
+                            Code = "dining-table",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000007"),
+                            Name = "Dining table",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000172"),
+                            Category = "Furniture",
+                            Code = "dining-chairs",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000007"),
+                            Name = "Dining chairs",
+                            Priority = "Normal",
+                            Quantity = 4,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000181"),
+                            Category = "Furniture",
+                            Code = "desk",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000008"),
+                            Name = "Desk",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = new Guid("019a18b0-7c00-7000-8000-000000000182"),
+                            Category = "Furniture",
+                            Code = "desk-chair",
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            InventoryListTemplateId = new Guid("019a18b0-7c00-7000-8000-000000000008"),
+                            Name = "Desk chair",
+                            Priority = "Normal",
+                            Quantity = 1,
+                            UpdatedAt = new DateTimeOffset(new DateTime(2026, 10, 18, 15, 30, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
 
@@ -1162,9 +1825,29 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_inventory_items_relocations_relocation_id");
 
+                    b.HasOne("Relovia.Api.Features.Inventory.InventoryTemplateItem", "SourceTemplateItem")
+                        .WithMany()
+                        .HasForeignKey("SourceTemplateItemId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_inventory_items_inventory_template_items_source_template_it");
+
                     b.Navigation("BudgetCategory");
 
                     b.Navigation("Relocation");
+
+                    b.Navigation("SourceTemplateItem");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Inventory.InventoryTemplateItem", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Inventory.InventoryListTemplate", "InventoryListTemplate")
+                        .WithMany("Items")
+                        .HasForeignKey("InventoryListTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventory_template_items_inventory_list_templates_inventory");
+
+                    b.Navigation("InventoryListTemplate");
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Relocations.Relocation", b =>
@@ -1265,6 +1948,11 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.Navigation("ExternalLogins");
 
                     b.Navigation("Relocations");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Inventory.InventoryListTemplate", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Relocations.ChecklistTemplate", b =>

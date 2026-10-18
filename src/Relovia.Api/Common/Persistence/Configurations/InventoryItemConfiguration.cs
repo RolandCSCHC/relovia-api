@@ -65,6 +65,13 @@ public sealed class InventoryItemConfiguration : IEntityTypeConfiguration<Invent
             .HasMaxLength(InventoryRules.NotesMaxLength)
             .IsRequired(false);
 
+        builder.Property(item => item.Code)
+            .HasMaxLength(InventoryTemplateRules.CodeMaxLength)
+            .IsRequired(false)
+            .HasConversion(
+                code => code == null ? null : InventoryTemplateRules.NormalizeCode(code),
+                code => code);
+
         builder.HasIndex(item => item.BudgetCategoryId)
             .HasDatabaseName("ix_inventory_items_budget_category_id");
 
@@ -77,6 +84,11 @@ public sealed class InventoryItemConfiguration : IEntityTypeConfiguration<Invent
         builder.HasIndex(item => new { item.RelocationId, item.Room, item.Name })
             .HasDatabaseName("ix_inventory_items_relocation_id_room_name");
 
+        builder.HasIndex(item => new { item.RelocationId, item.Code })
+            .IsUnique()
+            .HasFilter("code IS NOT NULL")
+            .HasDatabaseName("ux_inventory_items_relocation_id_code");
+
         builder.HasOne(item => item.Relocation)
             .WithMany()
             .HasForeignKey(item => item.RelocationId)
@@ -88,6 +100,11 @@ public sealed class InventoryItemConfiguration : IEntityTypeConfiguration<Invent
             .WithMany()
             .HasForeignKey(item => item.BudgetCategoryId)
             .OnDelete(DeleteBehavior.NoAction);
+
+        builder.HasOne(item => item.SourceTemplateItem)
+            .WithMany()
+            .HasForeignKey(item => item.SourceTemplateItemId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.ToTable("inventory_items", table =>
         {
@@ -143,6 +160,9 @@ public sealed class InventoryItemConfiguration : IEntityTypeConfiguration<Invent
             table.HasCheckConstraint(
                 "ck_inventory_items_notes",
                 "notes IS NULL OR char_length(btrim(notes)) > 0");
+            table.HasCheckConstraint(
+                "ck_inventory_items_code",
+                "code IS NULL OR code ~ '^[A-Za-z0-9_-]+$'");
         });
     }
 }

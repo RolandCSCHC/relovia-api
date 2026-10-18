@@ -44,6 +44,15 @@ public sealed class InventoryItem : ICreationTimestamp, IUpdateTimestamp
 
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// Copied from a room list. Empty when the user added the item by hand.
+    /// A later list skips a code that is already stored.
+    /// </summary>
+    public string? Code { get; set; }
+
+    /// <summary>The list row this item was copied from. Cleared if that row is removed.</summary>
+    public Guid? SourceTemplateItemId { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
@@ -51,4 +60,6 @@ public sealed class InventoryItem : ICreationTimestamp, IUpdateTimestamp
     public Relocation Relocation { get; set; } = null!;
 
     public BudgetCategory? BudgetCategory { get; set; }
+
+    public InventoryTemplateItem? SourceTemplateItem { get; set; }
 }

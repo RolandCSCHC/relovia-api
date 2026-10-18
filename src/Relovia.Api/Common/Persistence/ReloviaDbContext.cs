@@ -40,6 +40,10 @@ public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> 
 
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
 
+    public DbSet<InventoryListTemplate> InventoryListTemplates => Set<InventoryListTemplate>();
+
+    public DbSet<InventoryTemplateItem> InventoryTemplateItems => Set<InventoryTemplateItem>();
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         RejectPublishedTemplateEdits();

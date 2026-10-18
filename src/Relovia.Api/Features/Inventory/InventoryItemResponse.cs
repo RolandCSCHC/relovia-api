@@ -14,7 +14,9 @@ public sealed record InventoryItemResponse(
     decimal? ActualPrice,
     string? CurrencyCode,
     Guid? BudgetCategoryId,
-    string? Notes)
+    string? Notes,
+    string? Code,
+    Guid? SourceTemplateItemId)
 {
     public static InventoryItemResponse From(InventoryItem item)
     {
@@ -32,6 +34,8 @@ public sealed record InventoryItemResponse(
             item.ActualPrice,
             item.CurrencyCode,
             item.BudgetCategoryId,
-            item.Notes);
+            item.Notes,
+            item.Code,
+            item.SourceTemplateItemId);
     }
 }
