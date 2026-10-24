@@ -1,9 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Common.Persistence;
+using Relovia.Api.Features.Documents;
 
 namespace Relovia.Api.Features.Relocations;
 
-public sealed class RelocationService(ReloviaDbContext db)
+public sealed class RelocationService(
+    ReloviaDbContext db,
+    IObjectStorage storage,
+    ILogger<RelocationService> logger)
 {
     public async Task<IReadOnlyList<RelocationResponse>> ListAsync(
         Guid userId,
@@ -111,6 +115,11 @@ public sealed class RelocationService(ReloviaDbContext db)
             return false;
         }
 
+        var storageKeys = await db.Documents
+            .Where(document => document.RelocationId == relocation.Id)
+            .Select(document => document.StorageKey)
+            .ToListAsync(cancellationToken);
+
         var dependencies = await db.TaskDependencies
             .Where(dependency => dependency.RelocationId == relocation.Id)
             .ToListAsync(cancellationToken);
@@ -123,6 +132,7 @@ public sealed class RelocationService(ReloviaDbContext db)
 
         db.Relocations.Remove(relocation);
         await db.SaveChangesAsync(cancellationToken);
+        await StoredFiles.DeleteAsync(storage, logger, storageKeys, cancellationToken);
         return true;
     }
 

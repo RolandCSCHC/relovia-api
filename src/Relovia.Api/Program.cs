@@ -13,8 +13,10 @@ using Relovia.Api.Common.Health;
 using Relovia.Api.Common.OpenApi;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
+using Amazon.S3;
 using Relovia.Api.Features.Access;
 using Relovia.Api.Features.Budgets;
+using Relovia.Api.Features.Documents;
 using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Inventory;
@@ -129,6 +131,7 @@ builder.Services.AddScoped<BudgetService>();
 builder.Services.AddScoped<ExpenseService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<InventoryListService>();
+AddDocumentStorage(builder);
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
 var authentication = builder.Services.AddAuthentication(options =>
@@ -263,6 +266,98 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+if (!app.Environment.IsDevelopment() && app.Services.GetRequiredService<IObjectStorage>() is LocalObjectStorage)
+{
+    app.Logger.LogWarning(
+        "Document storage is a local directory. Files there disappear when the host is replaced. Set Storage:Provider to S3 to keep them.");
+}
+
 app.Run();
+
+static void AddDocumentStorage(WebApplicationBuilder builder)
+{
+    var storageSettings = builder.Configuration.GetSection(StorageSettings.SectionName).Get<StorageSettings>()
+        ?? new StorageSettings();
+    var provider = string.IsNullOrWhiteSpace(storageSettings.Provider) ? "Local" : storageSettings.Provider.Trim();
+    if (provider.Equals("S3", StringComparison.OrdinalIgnoreCase))
+    {
+        var s3 = storageSettings.S3;
+        var missing = new List<string>();
+        if (!Uri.TryCreate(s3.ServiceUrl, UriKind.Absolute, out var serviceUrl) || serviceUrl.Scheme != Uri.UriSchemeHttps)
+        {
+            missing.Add("Storage:S3:ServiceUrl");
+        }
+
+        if (string.IsNullOrWhiteSpace(s3.Region))
+        {
+            missing.Add("Storage:S3:Region");
+        }
+
+        if (string.IsNullOrWhiteSpace(s3.Bucket))
+        {
+            missing.Add("Storage:S3:Bucket");
+        }
+
+        if (string.IsNullOrWhiteSpace(s3.AccessKey))
+        {
+            missing.Add("Storage:S3:AccessKey");
+        }
+
+        if (string.IsNullOrWhiteSpace(s3.SecretKey))
+        {
+            missing.Add("Storage:S3:SecretKey");
+        }
+
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "Storage:Provider is S3 but these settings are missing or not an https URL: "
+                + string.Join(", ", missing)
+                + ".");
+        }
+
+        var configured = new S3StorageSettings
+        {
+            ServiceUrl = s3.ServiceUrl.Trim(),
+            Region = s3.Region.Trim(),
+            Bucket = s3.Bucket.Trim(),
+            AccessKey = s3.AccessKey,
+            SecretKey = s3.SecretKey,
+        };
+        builder.Services.AddSingleton(configured);
+        builder.Services.AddSingleton<IAmazonS3>(_ =>
+        {
+            var config = new AmazonS3Config
+            {
+                ServiceURL = configured.ServiceUrl,
+                AuthenticationRegion = configured.Region,
+                ForcePathStyle = true,
+            };
+            return new AmazonS3Client(configured.AccessKey, configured.SecretKey, config);
+        });
+        builder.Services.AddSingleton<IObjectStorage, S3ObjectStorage>();
+    }
+    else if (provider.Equals("Local", StringComparison.OrdinalIgnoreCase))
+    {
+        var root = storageSettings.Local.Root;
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            root = Path.Combine(builder.Environment.ContentRootPath, "data", "files");
+        }
+        else if (!Path.IsPathRooted(root))
+        {
+            root = Path.Combine(builder.Environment.ContentRootPath, root);
+        }
+
+        Directory.CreateDirectory(root);
+        builder.Services.AddSingleton<IObjectStorage>(new LocalObjectStorage(root));
+    }
+    else
+    {
+        throw new InvalidOperationException("Storage:Provider must be Local or S3.");
+    }
+
+    builder.Services.AddScoped<DocumentService>();
+}
 
 public partial class Program;
