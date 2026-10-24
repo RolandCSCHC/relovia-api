@@ -127,7 +127,7 @@ public sealed class ChecklistService(ReloviaDbContext db)
             .Where(task => task.RelocationId == relocation.Id)
             .ToListAsync(cancellationToken);
 
-        return ToResponse(tasks);
+        return ToResponse(tasks, await DocumentsByTaskAsync(relocation.Id, cancellationToken));
     }
 
     public async Task<RelocationTaskCreateResult> CreateAsync(
@@ -243,7 +243,8 @@ public sealed class ChecklistService(ReloviaDbContext db)
             .Include(candidate => candidate.Dependencies)
             .Where(candidate => candidate.RelocationId == relocation.Id)
             .ToListAsync(cancellationToken);
-        var response = ToResponse(tasks).Tasks.Single(candidate => candidate.Id == task.Id);
+        var response = ToResponse(tasks, await DocumentsByTaskAsync(relocation.Id, cancellationToken))
+            .Tasks.Single(candidate => candidate.Id == task.Id);
         return new RelocationTaskUpdateResult.Updated(response);
     }
 
@@ -267,7 +268,25 @@ public sealed class ChecklistService(ReloviaDbContext db)
             .ToListAsync(cancellationToken);
     }
 
-    private static RelocationTasksResponse ToResponse(IReadOnlyList<RelocationTask> tasks)
+    private async Task<Dictionary<Guid, Guid[]>> DocumentsByTaskAsync(
+        Guid relocationId,
+        CancellationToken cancellationToken)
+    {
+        var links = await db.DocumentTaskLinks.AsNoTracking()
+            .Where(link => link.RelocationId == relocationId)
+            .Select(link => new { link.TaskId, link.DocumentId })
+            .ToListAsync(cancellationToken);
+
+        return links
+            .GroupBy(link => link.TaskId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(link => link.DocumentId).OrderBy(id => id).ToArray());
+    }
+
+    private static RelocationTasksResponse ToResponse(
+        IReadOnlyList<RelocationTask> tasks,
+        IReadOnlyDictionary<Guid, Guid[]>? documentsByTask = null)
     {
         var byId = tasks.ToDictionary(task => task.Id);
         var progress = TaskProgressResponse.From(TaskProgress.Calculate(tasks.Select(task => task.Status)));
@@ -295,7 +314,10 @@ public sealed class ChecklistService(ReloviaDbContext db)
                             prerequisite.Code,
                             TaskProgress.IsDependencySatisfied(prerequisite.Status));
                     })
-                    .ToArray()))
+                    .ToArray(),
+                documentsByTask is not null && documentsByTask.TryGetValue(task.Id, out var documentIds)
+                    ? documentIds
+                    : []))
             .ToArray();
 
         return new RelocationTasksResponse(progress, responses);
