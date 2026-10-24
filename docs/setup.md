@@ -52,6 +52,8 @@ Do not commit the client secret. Production supplies the same keys as environmen
 
 Uploads go to a private store behind `IObjectStorage`. With `Storage:Provider` left as `Local`, files are written under `src/Relovia.Api/data/files` when you run from the project. That directory is gitignored and is not served as static files. A download always goes through the API, which checks the signed-in user before opening the file.
 
+A document can also record a category, an expiration date, and the tasks it supports. The category is optional: `Identity`, `Visa`, `Housing`, `Employment`, `Education`, `Insurance`, `Health`, `Finance`, `Moving`, or `Other`. The expiration date is a calendar date and can be in the past. Task links stay inside the relocation. Deleting the task or the document removes the link. Changing those details does not rewrite the file.
+
 `S3` is for a private S3-compatible bucket. Production uses Neon Object Storage on the same project as the database, AWS US East 1 (N. Virginia). Create a private bucket there and set the five `Storage:S3` keys (or `Storage__S3__ServiceUrl` and the matching environment variables). `Storage:S3:Region` is `us-east-1`. The client uses path-style addressing. Until those settings exist, a host that is not Development logs a warning and keeps using the local directory. Files on a container's disk disappear when that container is replaced.
 
 ## City list
