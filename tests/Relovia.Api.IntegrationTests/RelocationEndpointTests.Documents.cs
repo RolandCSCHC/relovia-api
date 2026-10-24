@@ -155,6 +155,163 @@ public sealed partial class RelocationEndpointTests
         Assert.False(File.Exists(stored));
     }
 
+    [Fact]
+    public async Task A_document_keeps_its_category_expiration_and_tasks_on_this_relocation()
+    {
+        var owner = await SignInAsync("documents-details-owner@example.com");
+        var other = await SignInAsync("documents-details-other@example.com");
+        using var ownerClient = CreateClient();
+        using var otherClient = CreateClient();
+        var relocation = await SendAsync<RelocationResponse>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Post,
+            "/api/relocations",
+            Request(name: "Papers", targetDate: new DateOnly(2026, 12, 1), destinationCountry: "DE"));
+        var elsewhere = await SendAsync<RelocationResponse>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Post,
+            "/api/relocations",
+            Request(name: "Other move", targetDate: new DateOnly(2026, 12, 1), destinationCountry: "FR"));
+        var relocationId = relocation.Body!.Id;
+        var path = $"/api/relocations/{relocationId}/documents";
+        var tasksPath = $"/api/relocations/{relocationId}/tasks";
+        var visaTask = await AddTaskAsync(ownerClient, owner.Token, tasksPath, "Apply for a visa");
+        var leaseTask = await AddTaskAsync(ownerClient, owner.Token, tasksPath, "Sign the lease");
+        var foreignTask = await AddTaskAsync(
+            ownerClient,
+            owner.Token,
+            $"/api/relocations/{elsewhere.Body!.Id}/tasks",
+            "Register an address");
+
+        var created = await UploadAsync<JsonElement>(
+            ownerClient,
+            owner.Token,
+            path,
+            VisaPdf,
+            "visa.pdf",
+            "application/pdf");
+        Assert.Equal(HttpStatusCode.Created, created.Status);
+        var documentId = created.Body.GetProperty("id").GetGuid();
+        Assert.Equal(JsonValueKind.Null, created.Body.GetProperty("category").ValueKind);
+        Assert.Equal(JsonValueKind.Null, created.Body.GetProperty("expiresOn").ValueKind);
+        Assert.Empty(created.Body.GetProperty("taskIds").EnumerateArray());
+        var stored = Path.Combine(_factory.StorageRoot, documentId.ToString("N"));
+
+        var before = await SendAsync<RelocationTasksResponse>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Get,
+            tasksPath,
+            body: null);
+        Assert.All(before.Body!.Tasks, task => Assert.Empty(task.DocumentIds));
+
+        var updated = await SendAsync<JsonElement>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Put,
+            $"{path}/{documentId}",
+            new
+            {
+                category = "Visa",
+                expiresOn = new DateOnly(2020, 1, 15),
+                taskIds = new[] { visaTask, visaTask },
+            });
+        Assert.Equal(HttpStatusCode.OK, updated.Status);
+        Assert.Equal("Visa", updated.Body.GetProperty("category").GetString());
+        Assert.Equal("2020-01-15", updated.Body.GetProperty("expiresOn").GetString());
+        Assert.Equal([visaTask], updated.Body.GetProperty("taskIds").EnumerateArray().Select(id => id.GetGuid()));
+        Assert.Equal(VisaPdf, await File.ReadAllBytesAsync(stored));
+
+        var listed = await SendAsync<JsonElement>(ownerClient, owner.Token, HttpMethod.Get, path, body: null);
+        Assert.Equal("Visa", listed.Body[0].GetProperty("category").GetString());
+        var linked = await SendAsync<RelocationTasksResponse>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Get,
+            tasksPath,
+            body: null);
+        Assert.Equal([documentId], linked.Body!.Tasks.Single(task => task.Id == visaTask).DocumentIds);
+        Assert.Empty(linked.Body.Tasks.Single(task => task.Id == leaseTask).DocumentIds);
+
+        var unknownCategory = await SendAsync<JsonElement>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Put,
+            $"{path}/{documentId}",
+            new { category = "Passport", expiresOn = (DateOnly?)null, taskIds = new[] { visaTask } });
+        var foreignLink = await SendAsync<JsonElement>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Put,
+            $"{path}/{documentId}",
+            new { category = "Visa", expiresOn = new DateOnly(2020, 1, 15), taskIds = new[] { foreignTask } });
+        var hidden = await SendAsync<JsonElement>(
+            otherClient,
+            other.Token,
+            HttpMethod.Put,
+            $"{path}/{documentId}",
+            new { category = "Other", expiresOn = (DateOnly?)null, taskIds = Array.Empty<Guid>() });
+        Assert.Equal(HttpStatusCode.BadRequest, unknownCategory.Status);
+        Assert.Equal(HttpStatusCode.BadRequest, foreignLink.Status);
+        Assert.Equal(HttpStatusCode.NotFound, hidden.Status);
+
+        var unchanged = await SendAsync<JsonElement>(ownerClient, owner.Token, HttpMethod.Get, path, body: null);
+        Assert.Equal([visaTask], unchanged.Body[0].GetProperty("taskIds").EnumerateArray().Select(id => id.GetGuid()));
+        Assert.Equal(VisaPdf, await File.ReadAllBytesAsync(stored));
+
+        var replaced = await SendAsync<JsonElement>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Put,
+            $"{path}/{documentId}",
+            new { category = (string?)null, expiresOn = (DateOnly?)null, taskIds = new[] { leaseTask } });
+        Assert.Equal(HttpStatusCode.OK, replaced.Status);
+        Assert.Equal(JsonValueKind.Null, replaced.Body.GetProperty("category").ValueKind);
+        Assert.Equal(JsonValueKind.Null, replaced.Body.GetProperty("expiresOn").ValueKind);
+        Assert.Equal([leaseTask], replaced.Body.GetProperty("taskIds").EnumerateArray().Select(id => id.GetGuid()));
+
+        var deletedTask = await SendAsync<JsonElement>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Delete,
+            $"{tasksPath}/{leaseTask}",
+            body: null);
+        Assert.Equal(HttpStatusCode.NoContent, deletedTask.Status);
+        var afterTask = await SendAsync<JsonElement>(ownerClient, owner.Token, HttpMethod.Get, path, body: null);
+        Assert.Empty(afterTask.Body[0].GetProperty("taskIds").EnumerateArray());
+        Assert.True(File.Exists(stored));
+
+        var deleted = await SendAsync<JsonElement>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Delete,
+            $"{path}/{documentId}",
+            body: null);
+        Assert.Equal(HttpStatusCode.NoContent, deleted.Status);
+        Assert.False(File.Exists(stored));
+        var tasks = await SendAsync<RelocationTasksResponse>(
+            ownerClient,
+            owner.Token,
+            HttpMethod.Get,
+            tasksPath,
+            body: null);
+        Assert.Empty(tasks.Body!.Tasks.Single(task => task.Id == visaTask).DocumentIds);
+    }
+
+    private static async Task<Guid> AddTaskAsync(ClientScope scope, string token, string path, string title)
+    {
+        var created = await SendAsync<RelocationTaskResponse>(
+            scope,
+            token,
+            HttpMethod.Post,
+            path,
+            new { title, dueDate = (DateOnly?)null, phase = "Administration", priority = "High" });
+        Assert.Equal(HttpStatusCode.Created, created.Status);
+        return created.Body!.Id;
+    }
+
     private async Task<ApiResult<T>> UploadAsync<T>(
         ClientScope scope,
         string token,
