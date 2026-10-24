@@ -47,6 +47,8 @@ public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> 
 
     public DbSet<Document> Documents => Set<Document>();
 
+    public DbSet<DocumentTaskLink> DocumentTaskLinks => Set<DocumentTaskLink>();
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         RejectPublishedTemplateEdits();

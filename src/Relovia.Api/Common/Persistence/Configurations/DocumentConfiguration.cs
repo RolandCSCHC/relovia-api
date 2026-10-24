@@ -26,8 +26,23 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(document => document.SizeBytes)
             .IsRequired();
 
+        builder.Property(document => document.Category)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired(false);
+
+        builder.Property(document => document.ExpiresOn)
+            .HasColumnType("date")
+            .IsRequired(false);
+
         builder.Property(document => document.CreatedAt)
             .HasColumnType("timestamptz");
+
+        builder.Property(document => document.UpdatedAt)
+            .HasColumnType("timestamptz");
+
+        builder.HasAlternateKey(document => new { document.RelocationId, document.Id })
+            .HasName("ak_documents_relocation_id_id");
 
         builder.HasIndex(document => document.StorageKey)
             .IsUnique()
@@ -55,6 +70,9 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
             table.HasCheckConstraint(
                 "ck_documents_size_bytes",
                 $"size_bytes > 0 AND size_bytes <= {DocumentRules.MaxBytes}");
+            table.HasCheckConstraint(
+                "ck_documents_category",
+                "category IS NULL OR category IN ('Identity', 'Visa', 'Housing', 'Employment', 'Education', 'Insurance', 'Health', 'Finance', 'Moving', 'Other')");
         });
     }
 }
