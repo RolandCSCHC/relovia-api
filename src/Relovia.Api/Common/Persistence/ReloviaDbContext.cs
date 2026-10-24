@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Features.Budgets;
+using Relovia.Api.Features.Documents;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Inventory;
 using Relovia.Api.Features.Relocations;
@@ -43,6 +44,8 @@ public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> 
     public DbSet<InventoryListTemplate> InventoryListTemplates => Set<InventoryListTemplate>();
 
     public DbSet<InventoryTemplateItem> InventoryTemplateItems => Set<InventoryTemplateItem>();
+
+    public DbSet<Document> Documents => Set<Document>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {

@@ -237,6 +237,65 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Documents.Document", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("file_name");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("storage_key");
+
+                    b.HasKey("Id")
+                        .HasName("pk_documents");
+
+                    b.HasIndex("RelocationId")
+                        .HasDatabaseName("ix_documents_relocation_id");
+
+                    b.HasIndex("StorageKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_documents_storage_key");
+
+                    b.ToTable("documents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_documents_content_type", "content_type IN ('application/pdf', 'image/jpeg', 'image/png', 'image/webp')");
+
+                            t.HasCheckConstraint("ck_documents_file_name", "char_length(btrim(file_name)) > 0 AND char_length(file_name) <= 200");
+
+                            t.HasCheckConstraint("ck_documents_size_bytes", "size_bytes > 0 AND size_bytes <= 10485760");
+
+                            t.HasCheckConstraint("ck_documents_storage_key", "storage_key ~ '^[0-9a-f]{32}$'");
+                        });
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Identity.AuthSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1784,6 +1843,18 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.Navigation("Relocation");
 
                     b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Documents.Document", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
+                        .WithMany()
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_documents_relocations_relocation_id");
+
+                    b.Navigation("Relocation");
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Identity.AuthSession", b =>
