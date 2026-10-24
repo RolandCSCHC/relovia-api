@@ -48,6 +48,12 @@ https://api.relovia.rolandschlosser.dev/api/auth/google/callback
 
 Do not commit the client secret. Production supplies the same keys as environment variables. On the OAuth consent screen, authorize the domain `rolandschlosser.dev`. While the app is in testing, the Google account must be listed as a test user.
 
+## Document storage
+
+Uploads go to a private store behind `IObjectStorage`. With `Storage:Provider` left as `Local`, files are written under `src/Relovia.Api/data/files` when you run from the project. That directory is gitignored and is not served as static files. A download always goes through the API, which checks the signed-in user before opening the file.
+
+`S3` is for a private S3-compatible bucket. Production uses Neon Object Storage on the same project as the database, AWS US East 1 (N. Virginia). Create a private bucket there and set the five `Storage:S3` keys (or `Storage__S3__ServiceUrl` and the matching environment variables). `Storage:S3:Region` is `us-east-1`. The client uses path-style addressing. Until those settings exist, a host that is not Development logs a warning and keeps using the local directory. Files on a container's disk disappear when that container is replaced.
+
 ## City list
 
 Choosing a country fills its city dropdown from the GeoNames [cities1000](https://download.geonames.org/export/dump/cities1000.zip) list: populated places of at least 1,000 people. The API downloads that list the first time a city dropdown is opened and keeps it for a day. No GeoNames account is required.
@@ -85,6 +91,13 @@ ASP.NET Core configuration. Environment variables use `__` between nested keys, 
 | `Email:From` | No | Sender. Default `Relovia <onboarding@resend.dev>`, which only delivers to the Resend account owner. Use an address on a verified domain to email anyone else. |
 | `Session:SlidingLifetime` | No | Default `14.00:00:00`. Must be positive. |
 | `Session:AbsoluteLifetime` | No | Default `30.00:00:00`. Must cover the sliding lifetime. |
+| `Storage:Provider` | No | `Local` (default) or `S3`. |
+| `Storage:Local:Root` | No | Private directory for local files. Empty uses `data/files` under the content root. The container image sets `/var/lib/relovia/files`. |
+| `Storage:S3:ServiceUrl` | For S3 | HTTPS endpoint of the bucket. Neon calls this `s3_endpoint`. |
+| `Storage:S3:Region` | For S3 | Region used to sign requests. Production is `us-east-1`. |
+| `Storage:S3:Bucket` | For S3 | Private bucket name. |
+| `Storage:S3:AccessKey` | For S3 | S3 access key. Keep it out of Git. |
+| `Storage:S3:SecretKey` | For S3 | S3 secret key. Keep it out of Git. |
 | `ASPNETCORE_ENVIRONMENT` | No | `Development` turns on user secrets, OpenAPI, and Scalar. |
 | `ASPNETCORE_HTTP_PORTS` | No | Listen ports. The image sets `8080`. |
 | `PORT` | No | When set, replaces `ASPNETCORE_HTTP_PORTS`. Some container hosts inject this. |
@@ -93,7 +106,7 @@ Keep hosted database URLs and Google secrets out of Git.
 
 ## Production
 
-The API runs from the Dockerfile on Render. Neon hosts Postgres 18. The public API origin is `https://api.relovia.rolandschlosser.dev`. The app origin is `https://relovia.rolandschlosser.dev`.
+The API runs from the Dockerfile on Render. Neon hosts Postgres 18 in AWS US East 1 (N. Virginia). The public API origin is `https://api.relovia.rolandschlosser.dev`. The app origin is `https://relovia.rolandschlosser.dev`.
 
 Npgsql needs a keyword connection string. A `postgresql://` URI is rejected. Use the pooled Neon host for the running API, and the direct host (the one without `-pooler`) only for migrations. The API does not migrate on startup.
 
@@ -111,6 +124,12 @@ Render environment variables:
 | `Web__RequestTokenCookieDomain` | `.relovia.rolandschlosser.dev` |
 | `Authentication__Google__ClientId` | OAuth web client id |
 | `Authentication__Google__ClientSecret` | OAuth web client secret |
+| `Storage__Provider` | `S3` |
+| `Storage__S3__ServiceUrl` | The branch `s3_endpoint`, an `https://` URL |
+| `Storage__S3__Region` | `us-east-1` |
+| `Storage__S3__Bucket` | Private bucket name, `relovia` |
+| `Storage__S3__AccessKey` | Neon credential `token_id` |
+| `Storage__S3__SecretKey` | Neon credential `s3_secret_access_key` |
 
 Add the Resend key so the developer is emailed when someone signs in to show interest:
 
