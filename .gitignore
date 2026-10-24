@@ -424,5 +424,8 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
+# Private files stored by the API in Development.
+src/Relovia.Api/data/
+
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
