@@ -49,7 +49,7 @@ Google OpenID Connect runs here. The callback reads the profile and discards the
 
 The browser session is the HttpOnly cookie `relovia_session`. The cookie value is a random token. Postgres stores only a hash of it. Logout sets `revoked_at` and clears the cookie, so a copied cookie stops working. A session has a sliding lifetime and an absolute lifetime, so it cannot be refreshed forever.
 
-The cookie is `SameSite=Lax` and host-only. It is `Secure` outside local HTTP. Localhost ports are the same site, so the Angular app on port 4200 sends the cookie to this API on port 5080. In production, `relovia.app` and `api.relovia.app` are the same site, so the browser sends that cookie. `XSRF-TOKEN` uses the parent domain `.relovia.app` so the app host can read it.
+The cookie is `SameSite=Lax` and host-only. It is `Secure` outside local HTTP. Localhost ports are the same site, so the Angular app on port 4200 sends the cookie to this API on port 5080. In production, `relovia.rolandschlosser.dev` and `api.relovia.rolandschlosser.dev` are the same site, so the browser sends that cookie. `XSRF-TOKEN` uses the parent domain `.relovia.rolandschlosser.dev` so the app host can read it.
 
 Mutating requests require the header `X-XSRF-TOKEN`. The readable request cookie is `XSRF-TOKEN`. The secret cookie is `relovia_antiforgery`. Data Protection keys are stored in Postgres, so a redeploy can still read protected cookies.
 
@@ -83,8 +83,8 @@ Exchange rates come from `open.er-api.com` (free, no key, updated once a day, la
 | --- | --- |
 | Local API | `http://localhost:5080` |
 | Local app | `http://localhost:4200` |
-| Production API | `https://api.relovia.app` on Render |
+| Production API | `https://api.relovia.rolandschlosser.dev` on Render |
 | Production database | Neon Postgres 18 |
-| Production app | `https://relovia.app` on Vercel |
+| Production app | `https://relovia.rolandschlosser.dev` on Vercel |
 
 Production configuration, including the Google redirect URI, is in [docs/setup.md](docs/setup.md).

@@ -43,10 +43,10 @@ In the Google client, set both authorized redirect URIs:
 
 ```text
 http://localhost:5080/api/auth/google/callback
-https://api.relovia.app/api/auth/google/callback
+https://api.relovia.rolandschlosser.dev/api/auth/google/callback
 ```
 
-Do not commit the client secret. Production supplies the same keys as environment variables. On the OAuth consent screen, authorize the domain `relovia.app`. While the app is in testing, the Google account must be listed as a test user.
+Do not commit the client secret. Production supplies the same keys as environment variables. On the OAuth consent screen, authorize the domain `rolandschlosser.dev`. While the app is in testing, the Google account must be listed as a test user.
 
 ## City list
 
@@ -93,7 +93,7 @@ Keep hosted database URLs and Google secrets out of Git.
 
 ## Production
 
-The API runs from the Dockerfile on Render. Neon hosts Postgres 18. The public API origin is `https://api.relovia.app`. The app origin is `https://relovia.app`.
+The API runs from the Dockerfile on Render. Neon hosts Postgres 18. The public API origin is `https://api.relovia.rolandschlosser.dev`. The app origin is `https://relovia.rolandschlosser.dev`.
 
 Npgsql needs a keyword connection string. A `postgresql://` URI is rejected. Use the pooled Neon host for the running API, and the direct host (the one without `-pooler`) only for migrations. The API does not migrate on startup.
 
@@ -107,8 +107,8 @@ Render environment variables:
 | --- | --- |
 | `ASPNETCORE_ENVIRONMENT` | `Production` |
 | `ConnectionStrings__Relovia` | Pooled keyword string above |
-| `Web__Origins__0` | `https://relovia.app` |
-| `Web__RequestTokenCookieDomain` | `.relovia.app` |
+| `Web__Origins__0` | `https://relovia.rolandschlosser.dev` |
+| `Web__RequestTokenCookieDomain` | `.relovia.rolandschlosser.dev` |
 | `Authentication__Google__ClientId` | OAuth web client id |
 | `Authentication__Google__ClientSecret` | OAuth web client secret |
 

@@ -103,7 +103,7 @@ builder.Services.AddHttpClient<IInterestNotifier, ResendInterestNotifier>(client
 {
     client.BaseAddress = new Uri("https://api.resend.com/");
     client.Timeout = TimeSpan.FromSeconds(10);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.app)");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.rolandschlosser.dev)");
 });
 builder.Services.AddScoped<InterestService>();
 builder.Services.AddMemoryCache();
@@ -111,13 +111,13 @@ builder.Services.AddHttpClient<GeoNamesCityListSource>(client =>
 {
     client.BaseAddress = new Uri("https://download.geonames.org/");
     client.Timeout = TimeSpan.FromSeconds(60);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.app)");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.rolandschlosser.dev)");
 });
 builder.Services.AddHttpClient<OpenErApiRateProvider>(client =>
 {
     client.BaseAddress = new Uri("https://open.er-api.com/");
     client.Timeout = TimeSpan.FromSeconds(10);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.app)");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.rolandschlosser.dev)");
 });
 builder.Services.AddScoped<IExchangeRateProvider>(provider => provider.GetRequiredService<OpenErApiRateProvider>());
 builder.Services.AddScoped<ExchangeRateService>();
