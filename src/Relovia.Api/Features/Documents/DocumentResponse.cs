@@ -5,7 +5,10 @@ public sealed record DocumentResponse(
     string FileName,
     string ContentType,
     long SizeBytes,
-    DateTimeOffset CreatedAt)
+    DateTimeOffset CreatedAt,
+    DocumentCategory? Category,
+    DateOnly? ExpiresOn,
+    IReadOnlyList<Guid> TaskIds)
 {
     public static DocumentResponse From(Document document)
     {
@@ -14,7 +17,10 @@ public sealed record DocumentResponse(
             document.FileName,
             document.ContentType,
             document.SizeBytes,
-            document.CreatedAt);
+            document.CreatedAt,
+            document.Category,
+            document.ExpiresOn,
+            document.Links.Select(link => link.TaskId).OrderBy(id => id).ToArray());
     }
 }
 

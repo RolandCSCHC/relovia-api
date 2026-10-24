@@ -55,6 +55,25 @@ public sealed class DocumentsController(DocumentService documents) : ControllerB
             document => Created($"/api/relocations/{relocationId}/documents/{document.Id}/content", document));
     }
 
+    [HttpPut("{documentId:guid}")]
+    [EndpointName("updateDocument")]
+    [EndpointSummary("Sets the category, expiration date, and tasks. The file is unchanged.")]
+    public async Task<ActionResult<DocumentResponse>> Update(
+        Guid relocationId,
+        Guid documentId,
+        UpdateDocumentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        return Map(
+            await documents.UpdateAsync(userId, relocationId, documentId, request, cancellationToken),
+            Ok);
+    }
+
     [HttpGet("{documentId:guid}/content")]
     [Produces("application/octet-stream", "application/pdf", "image/jpeg", "image/png", "image/webp")]
     [EndpointName("downloadDocument")]

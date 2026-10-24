@@ -20,6 +20,7 @@ public sealed class DocumentService(ReloviaDbContext db, IObjectStorage storage,
         }
 
         var documents = await db.Documents.AsNoTracking()
+            .Include(document => document.Links)
             .Where(document => document.RelocationId == relocationId)
             .OrderBy(document => document.CreatedAt)
             .ThenBy(document => document.Id)
@@ -77,6 +78,75 @@ public sealed class DocumentService(ReloviaDbContext db, IObjectStorage storage,
             throw;
         }
 
+        return new DocumentResult<DocumentResponse>.Success(DocumentResponse.From(document));
+    }
+
+    /// <summary>
+    /// Sets the category, expiration, and task links. The stored file is left as it is.
+    /// A task from another relocation is rejected, and the previous links stay.
+    /// </summary>
+    public async Task<DocumentResult<DocumentResponse>> UpdateAsync(
+        Guid userId,
+        Guid relocationId,
+        Guid documentId,
+        UpdateDocumentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!await OwnsRelocationAsync(userId, relocationId, cancellationToken))
+        {
+            return new DocumentResult<DocumentResponse>.NotFound(RelocationNotFoundTitle);
+        }
+
+        var errors = DocumentDetailsRules.Validate(request);
+        if (errors.Count > 0)
+        {
+            return new DocumentResult<DocumentResponse>.Invalid(errors);
+        }
+
+        var document = await db.Documents
+            .Include(candidate => candidate.Links)
+            .SingleOrDefaultAsync(
+                candidate => candidate.Id == documentId
+                    && candidate.RelocationId == relocationId
+                    && candidate.Relocation.UserId == userId,
+                cancellationToken);
+        if (document is null)
+        {
+            return new DocumentResult<DocumentResponse>.NotFound(DocumentNotFoundTitle);
+        }
+
+        var taskIds = DocumentDetailsRules.DistinctTaskIds(request.TaskIds!);
+        if (taskIds.Length > 0)
+        {
+            var found = await db.RelocationTasks.AsNoTracking()
+                .CountAsync(
+                    task => task.RelocationId == relocationId && taskIds.Contains(task.Id),
+                    cancellationToken);
+            if (found != taskIds.Length)
+            {
+                return new DocumentResult<DocumentResponse>.Invalid(new Dictionary<string, string[]>(StringComparer.Ordinal)
+                {
+                    ["taskIds"] = [DocumentDetailsRules.UnknownTaskMessage],
+                });
+            }
+        }
+
+        document.Category = request.Category;
+        document.ExpiresOn = request.ExpiresOn;
+        db.DocumentTaskLinks.RemoveRange(document.Links);
+        foreach (var taskId in taskIds.OrderBy(id => id))
+        {
+            // A client-generated id added only through the collection is treated as a row that already exists.
+            db.DocumentTaskLinks.Add(new DocumentTaskLink
+            {
+                Id = Guid.CreateVersion7(),
+                RelocationId = relocationId,
+                DocumentId = document.Id,
+                TaskId = taskId,
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
         return new DocumentResult<DocumentResponse>.Success(DocumentResponse.From(document));
     }
 
