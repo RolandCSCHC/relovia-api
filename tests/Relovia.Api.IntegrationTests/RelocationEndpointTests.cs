@@ -355,8 +355,13 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
         private readonly string _connectionString;
         private readonly string _citiesFile;
         private readonly string _admin1File;
+        private readonly string _storageRoot = Path.Combine(
+            Path.GetTempPath(),
+            "relovia-files-" + Guid.NewGuid().ToString("N"));
 
         private readonly bool _restricted;
+
+        public string StorageRoot => _storageRoot;
 
         public ReloviaApiFactory(
             string connectionString,
@@ -368,8 +373,11 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             _citiesFile = citiesFile;
             _admin1File = admin1File;
             _restricted = restricted;
+            Directory.CreateDirectory(_storageRoot);
             // Environment variables override appsettings, including the local Development database.
             Environment.SetEnvironmentVariable("ConnectionStrings__Relovia", connectionString);
+            Environment.SetEnvironmentVariable("Storage__Provider", "Local");
+            Environment.SetEnvironmentVariable("Storage__Local__Root", _storageRoot);
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -380,6 +388,16 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             // Most tests sign in as arbitrary example.com users, so they run with the app open.
             builder.UseSetting("Access:Restricted", _restricted ? "true" : "false");
             builder.UseSetting("Access:AllowedEmails:0", AllowedEmail);
+            builder.UseSetting("Storage:Provider", "Local");
+            builder.UseSetting("Storage:Local:Root", _storageRoot);
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Storage:Provider"] = "Local",
+                    ["Storage:Local:Root"] = _storageRoot,
+                });
+            });
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IExchangeRateProvider>();
@@ -388,6 +406,24 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
                 services.AddSingleton<RecordingInterestNotifier>();
                 services.AddSingleton<IInterestNotifier>(provider => provider.GetRequiredService<RecordingInterestNotifier>());
             });
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (!disposing || !Directory.Exists(_storageRoot))
+            {
+                return;
+            }
+
+            try
+            {
+                Directory.Delete(_storageRoot, recursive: true);
+            }
+            catch (IOException)
+            {
+                // The host can still be releasing a file. The directory is under the temp path.
+            }
         }
     }
 
