@@ -20,6 +20,10 @@ EXPOSE 8080
 COPY --from=build /app/publish .
 
 USER root
-RUN mkdir -p /var/lib/relovia/files && chown "$APP_UID" /var/lib/relovia/files
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libfontconfig1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /var/lib/relovia/files \
+    && chown "$APP_UID" /var/lib/relovia/files
 USER $APP_UID
 ENTRYPOINT ["dotnet", "Relovia.Api.dll"]
