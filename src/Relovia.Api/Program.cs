@@ -16,6 +16,7 @@ using Relovia.Api.Common.Security;
 using Amazon.S3;
 using Relovia.Api.Features.Access;
 using Relovia.Api.Features.Budgets;
+using Relovia.Api.Features.Calendar;
 using Relovia.Api.Features.Documents;
 using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
@@ -131,6 +132,7 @@ builder.Services.AddScoped<BudgetService>();
 builder.Services.AddScoped<ExpenseService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<InventoryListService>();
+builder.Services.AddScoped<CalendarService>();
 AddDocumentStorage(builder);
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
