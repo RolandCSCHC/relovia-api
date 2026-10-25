@@ -21,6 +21,7 @@ using Relovia.Api.Features.Documents;
 using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Inventory;
+using Relovia.Api.Features.Notifications;
 using Relovia.Api.Features.Places;
 using Relovia.Api.Features.Relocations;
 using Scalar.AspNetCore;
@@ -133,6 +134,7 @@ builder.Services.AddScoped<ExpenseService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<InventoryListService>();
 builder.Services.AddScoped<CalendarService>();
+builder.Services.AddScoped<NotificationService>();
 AddDocumentStorage(builder);
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
