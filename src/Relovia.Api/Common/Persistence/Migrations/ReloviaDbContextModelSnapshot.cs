@@ -237,6 +237,70 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Calendar.CalendarEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("EndsAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("ends_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("location");
+
+                    b.Property<DateOnly?>("OccursOn")
+                        .HasColumnType("date")
+                        .HasColumnName("occurs_on");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<DateTimeOffset?>("StartsAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("starts_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_calendar_events");
+
+                    b.HasIndex("RelocationId")
+                        .HasDatabaseName("ix_calendar_events_relocation_id");
+
+                    b.ToTable("calendar_events", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_calendar_events_kind", "(kind = 'Milestone' AND occurs_on IS NOT NULL AND starts_at IS NULL AND ends_at IS NULL)\nOR (kind = 'Appointment' AND occurs_on IS NULL AND starts_at IS NOT NULL AND (ends_at IS NULL OR ends_at > starts_at))");
+
+                            t.HasCheckConstraint("ck_calendar_events_location", "location IS NULL OR (char_length(btrim(location)) > 0 AND char_length(location) <= 200)");
+
+                            t.HasCheckConstraint("ck_calendar_events_title", "char_length(btrim(title)) > 0 AND char_length(title) <= 200");
+                        });
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Documents.Document", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1896,6 +1960,18 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.Navigation("Relocation");
 
                     b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Calendar.CalendarEvent", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
+                        .WithMany()
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_calendar_events_relocations_relocation_id");
+
+                    b.Navigation("Relocation");
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Documents.Document", b =>

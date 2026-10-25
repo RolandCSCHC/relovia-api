@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Features.Budgets;
+using Relovia.Api.Features.Calendar;
 using Relovia.Api.Features.Documents;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Inventory;
@@ -46,6 +47,8 @@ public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> 
     public DbSet<InventoryTemplateItem> InventoryTemplateItems => Set<InventoryTemplateItem>();
 
     public DbSet<Document> Documents => Set<Document>();
+
+    public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
 
     public DbSet<DocumentTaskLink> DocumentTaskLinks => Set<DocumentTaskLink>();
 
