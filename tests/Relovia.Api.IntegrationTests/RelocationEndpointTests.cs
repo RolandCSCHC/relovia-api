@@ -14,6 +14,7 @@ using Relovia.Api.Common.Security;
 using Relovia.Api.Features.Access;
 using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
+using Relovia.Api.Features.Notifications;
 using Relovia.Api.Features.Places;
 using Relovia.Api.Features.Relocations;
 
@@ -378,6 +379,7 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             Environment.SetEnvironmentVariable("ConnectionStrings__Relovia", connectionString);
             Environment.SetEnvironmentVariable("Storage__Provider", "Local");
             Environment.SetEnvironmentVariable("Storage__Local__Root", _storageRoot);
+            Environment.SetEnvironmentVariable("Reminders__Enabled", "false");
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -390,6 +392,7 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             builder.UseSetting("Access:AllowedEmails:0", AllowedEmail);
             builder.UseSetting("Storage:Provider", "Local");
             builder.UseSetting("Storage:Local:Root", _storageRoot);
+            builder.UseSetting("Reminders:Enabled", "false");
             builder.ConfigureAppConfiguration((_, configuration) =>
             {
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -405,6 +408,9 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
                 services.RemoveAll<IInterestNotifier>();
                 services.AddSingleton<RecordingInterestNotifier>();
                 services.AddSingleton<IInterestNotifier>(provider => provider.GetRequiredService<RecordingInterestNotifier>());
+                services.RemoveAll<INotificationEmailSender>();
+                services.AddSingleton<RecordingNotificationEmailSender>();
+                services.AddSingleton<INotificationEmailSender>(provider => provider.GetRequiredService<RecordingNotificationEmailSender>());
             });
         }
 

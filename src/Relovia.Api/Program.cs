@@ -109,6 +109,12 @@ builder.Services.AddHttpClient<IInterestNotifier, ResendInterestNotifier>(client
     client.Timeout = TimeSpan.FromSeconds(10);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.rolandschlosser.dev)");
 });
+builder.Services.AddHttpClient<INotificationEmailSender, ResendNotificationEmailSender>(client =>
+{
+    client.BaseAddress = new Uri("https://api.resend.com/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.rolandschlosser.dev)");
+});
 builder.Services.AddScoped<InterestService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<GeoNamesCityListSource>(client =>
@@ -135,6 +141,9 @@ builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<InventoryListService>();
 builder.Services.AddScoped<CalendarService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<ReminderService>();
+builder.Services.AddOptions<ReminderSettings>().Bind(builder.Configuration.GetSection(ReminderSettings.SectionName));
+builder.Services.AddHostedService<ReminderHostedService>();
 AddDocumentStorage(builder);
 
 var securePolicy = CookieSecurity.SecurePolicy(builder.Environment);
