@@ -1,0 +1,369 @@
+using Relovia.Api.Features.Budgets;
+using Relovia.Api.Features.Calendar;
+using Relovia.Api.Features.Documents;
+using Relovia.Api.Features.Export;
+using Relovia.Api.Features.Inventory;
+using Relovia.Api.Features.Relocations;
+using UglyToad.PdfPig;
+
+namespace Relovia.Api.UnitTests;
+
+public sealed class RelocationPacketTests
+{
+    private static readonly Guid NoticeId = Guid.Parse("0199f0a1-7c00-7000-8000-000000000021");
+    private static readonly Guid FlightId = Guid.Parse("0199f0a1-7c00-7000-8000-000000000022");
+    private static readonly Guid HousingId = Guid.Parse("0199f0a1-7c00-7000-8000-000000000031");
+    private static readonly Guid DocumentId = Guid.Parse("0199f0a1-7c00-7000-8000-000000000061");
+
+    [Fact]
+    public void The_packet_contains_the_relocation_and_an_empty_one_says_so()
+    {
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Test", TimeSpan.FromHours(-3), "Test", "Test");
+        var packet = RelocationPacketComposer.Compose(
+            Relocation(),
+            Tasks(),
+            Budget(),
+            Expenses(),
+            Items(),
+            Events(),
+            Documents(),
+            zone);
+
+        Assert.Equal("Berlin move.pdf", packet.FileName);
+        Assert.Equal("Santiago, Chile to Berlin, Germany", packet.Route);
+        Assert.Equal("1 Dec 2026 · International · Work · Active", packet.Summary);
+        Assert.Equal("0 of 1 done", packet.Progress);
+
+        var tasks = Section(packet, "Tasks");
+        var notice = Entry(tasks, "Give notice");
+        Assert.Equal("Housing", notice.Heading);
+        Assert.Contains("To do · High · Due 2 Oct 2026", notice.Lines);
+        var flight = Entry(tasks, "Book the flight");
+        Assert.Null(flight.Heading);
+        Assert.Contains("After Give notice (waiting)", flight.Lines);
+        Assert.Contains("1 document", flight.Lines);
+
+        var budget = Section(packet, "Budget");
+        Assert.Contains(budget.Blocks, block => block is PacketBlock.Paragraph paragraph
+            && paragraph.Text == "Estimated EUR $1,200.00");
+        Assert.Contains(budget.Blocks, block => block is PacketBlock.Paragraph paragraph
+            && paragraph.Text.Contains("XTS $900,000.00 spent (1 expense)", StringComparison.Ordinal));
+        var categories = Assert.IsType<PacketBlock.Table>(budget.Blocks.Single(block => block is PacketBlock.Table table && table.Heading == "Categories"));
+        Assert.Equal(["Housing", "EUR $1,000.00", "EUR $200.00", "EUR $800.00 left"], categories.Rows[0]);
+        var estimates = Assert.IsType<PacketBlock.Table>(budget.Blocks.Single(block => block is PacketBlock.Table table && table.Heading == "Estimates"));
+        Assert.Equal("Deposit", estimates.Rows[0][0]);
+        Assert.Equal("—", estimates.Rows[0][3]);
+        Assert.Equal("≈ EUR $1,000.00", estimates.Rows[1][3]);
+        var movers = Entry(budget, "Movers");
+        Assert.Equal("Expenses", movers.Heading);
+        Assert.Contains("20 Oct 2026 · Housing · Give notice", movers.Lines);
+        Assert.Contains("CLP $900,000 · ≈ EUR $900.00", movers.Lines);
+        Assert.Contains("Paid in cash", movers.Lines);
+        var lamp = Entry(budget, "Lamp");
+        Assert.Equal("Shopping", lamp.Heading);
+        Assert.Contains("Housing", lamp.Lines);
+        Assert.Contains("Estimate USD $45.50 · ≈ EUR $22.75", lamp.Lines);
+
+        var inventory = Section(packet, "Inventory");
+        var sheets = Entry(inventory, "Sheets × 2");
+        Assert.Equal("Bedroom", sheets.Heading);
+        Assert.Contains("Linens · Owned · Bring · Not packed · Normal", sheets.Lines);
+        Assert.Equal("Living room", Entry(inventory, "Sofa").Heading);
+
+        var calendar = Section(packet, "Calendar");
+        var handover = Entry(calendar, "Key handover");
+        Assert.Contains("Appointment · 15 Nov 2026, 09:30 – 10:00", handover.Lines);
+        Assert.Contains("Landlord's office", handover.Lines);
+        Assert.Contains("Milestone · 1 Dec 2026", Entry(calendar, "Move day").Lines);
+
+        var documents = Section(packet, "Documents");
+        var passport = Entry(documents, "passport.pdf");
+        Assert.Contains("Visa · Expires 1 Jun 2027 · 12 KB", passport.Lines);
+        Assert.Contains("Supports Book the flight", passport.Lines);
+
+        var empty = RelocationPacketComposer.Compose(
+            Relocation(),
+            new RelocationTasksResponse(new TaskProgressResponse(0, 0, 0), []),
+            new BudgetResponse(null, [], new BudgetTotalsResponse(0, 0, 0), [], null, false),
+            [],
+            [],
+            [],
+            [],
+            TimeZoneInfo.Utc);
+        Assert.Equal("Checklist not confirmed", empty.Progress);
+        Assert.Equal("None yet.", Paragraph(Section(empty, "Tasks")));
+        Assert.Equal("Not set up yet.", Paragraph(Section(empty, "Budget")));
+        Assert.Equal("None yet.", Paragraph(Section(empty, "Inventory")));
+        Assert.Equal("None yet.", Paragraph(Section(empty, "Calendar")));
+        Assert.Equal("None yet.", Paragraph(Section(empty, "Documents")));
+    }
+
+    [Fact]
+    public void The_pdf_contains_the_packet_text()
+    {
+        var packet = RelocationPacketComposer.Compose(
+            Relocation(),
+            Tasks(),
+            Budget(),
+            Expenses(),
+            Items(),
+            Events(),
+            Documents(),
+            TimeZoneInfo.Utc);
+        var bytes = RelocationPdf.Render(packet);
+
+        Assert.Equal("%PDF"u8.ToArray(), bytes[..4]);
+        using var document = PdfDocument.Open(bytes);
+        var text = string.Join('\n', document.GetPages().Select(page => page.Text));
+        Assert.Contains("Berlin move", text);
+        Assert.Contains("Give notice", text);
+        Assert.Contains("EUR $1,200.00", text);
+        Assert.Contains("passport.pdf", text);
+        Assert.Contains("Key handover", text);
+        Assert.Contains("Sheets", text);
+    }
+
+    [Fact]
+    public void The_summary_pdf_keeps_the_short_page()
+    {
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Test", TimeSpan.FromHours(-3), "Test", "Test");
+        var packet = RelocationPacketComposer.ComposeSummary(
+            Relocation(),
+            Tasks(),
+            Budget(),
+            Items(),
+            Events(),
+            Documents(),
+            zone);
+
+        Assert.Equal("Berlin move summary.pdf", packet.FileName);
+        Assert.Equal("Give notice", Entry(Section(packet, "Open tasks"), "Give notice").Title);
+        Assert.DoesNotContain(Section(packet, "Open tasks").Blocks.OfType<PacketBlock.Entry>(), entry => entry.Title == "Book the flight");
+        Assert.Contains(
+            Section(packet, "Money").Blocks.OfType<PacketBlock.Paragraph>(),
+            paragraph => paragraph.Text == "Housing · EUR $800.00 left");
+        Assert.DoesNotContain(
+            Section(packet, "Money").Blocks.OfType<PacketBlock.Paragraph>(),
+            paragraph => paragraph.Text.Contains("Movers", StringComparison.Ordinal));
+        Assert.Equal("Sheets × 2", Entry(Section(packet, "Still to pack"), "Sheets × 2").Title);
+        Assert.DoesNotContain(Section(packet, "Still to pack").Blocks.OfType<PacketBlock.Entry>(), entry => entry.Title == "Sofa");
+        var dates = Section(packet, "Dates").Blocks.OfType<PacketBlock.Entry>().ToArray();
+        Assert.Equal(["15 Nov 2026", "1 Dec 2026", "1 Jun 2027"], dates.Select(entry => entry.Title));
+        Assert.Contains("Key handover · 09:30 – 10:00 · Landlord's office", dates[0].Lines);
+        Assert.Contains("passport.pdf · expires · Visa", dates[2].Lines);
+
+        var bytes = RelocationPdf.Render(packet);
+        using var document = PdfDocument.Open(bytes);
+        var text = string.Join('\n', document.GetPages().Select(page => page.Text));
+        Assert.Contains("Give notice", text);
+        Assert.DoesNotContain("Movers", text);
+    }
+
+    private static PacketSection Section(RelocationPacket packet, string title)
+    {
+        return Assert.Single(packet.Sections, section => section.Title == title);
+    }
+
+    private static PacketBlock.Entry Entry(PacketSection section, string title)
+    {
+        return Assert.Single(section.Blocks.OfType<PacketBlock.Entry>(), entry => entry.Title == title);
+    }
+
+    private static string Paragraph(PacketSection section)
+    {
+        return Assert.Single(section.Blocks.OfType<PacketBlock.Paragraph>()).Text;
+    }
+
+    private static RelocationResponse Relocation()
+    {
+        return new RelocationResponse(
+            Guid.Parse("0199f0a1-7c00-7000-8000-000000000010"),
+            "Berlin move",
+            "CL",
+            "Santiago",
+            "DE",
+            "Berlin",
+            new DateOnly(2026, 12, 1),
+            RelocationPurpose.Work,
+            RelocationStatus.Active,
+            true,
+            DateTimeOffset.Parse("2026-10-12T12:00:00Z"),
+            DateTimeOffset.Parse("2026-10-12T12:00:00Z"));
+    }
+
+    private static RelocationTasksResponse Tasks()
+    {
+        return new RelocationTasksResponse(
+            new TaskProgressResponse(0, 1, 0),
+            [
+                new RelocationTaskResponse(
+                    NoticeId,
+                    "give-notice",
+                    "Give notice",
+                    60,
+                    new DateOnly(2026, 10, 2),
+                    TaskPhase.Housing,
+                    TaskPriority.High,
+                    RelocationTaskStatus.Todo,
+                    null,
+                    [],
+                    []),
+                new RelocationTaskResponse(
+                    FlightId,
+                    "book-flight",
+                    "Book the flight",
+                    30,
+                    new DateOnly(2026, 11, 1),
+                    TaskPhase.Housing,
+                    TaskPriority.Normal,
+                    RelocationTaskStatus.Skipped,
+                    null,
+                    [new TaskDependencyResponse(NoticeId, "give-notice", false)],
+                    [DocumentId]),
+            ]);
+    }
+
+    private static BudgetResponse Budget()
+    {
+        return new BudgetResponse(
+            "EUR",
+            [
+                new BudgetCategoryResponse(
+                    HousingId,
+                    "Housing",
+                    [
+                        new BudgetEstimateResponse(
+                            Guid.Parse("0199f0a1-7c00-7000-8000-000000000041"),
+                            HousingId,
+                            "Deposit",
+                            1000m,
+                            "EUR",
+                            1000m),
+                        new BudgetEstimateResponse(
+                            Guid.Parse("0199f0a1-7c00-7000-8000-000000000042"),
+                            HousingId,
+                            "Sofa",
+                            1200m,
+                            "NZD",
+                            1000m),
+                    ],
+                    1000m,
+                    200m,
+                    800m,
+                    1,
+                    [
+                        new ShoppingLineResponse(
+                            Guid.Parse("0199f0a1-7c00-7000-8000-000000000043"),
+                            "Lamp",
+                            45.5m,
+                            null,
+                            "USD",
+                            22.75m,
+                            null),
+                    ]),
+            ],
+            new BudgetTotalsResponse(1200m, 200m, 1000m),
+            [
+                new UnconvertedAmountsResponse("XTS", 1, 900000m, 0, 0, 0, 0, 0),
+            ],
+            DateTimeOffset.Parse("2026-10-17T00:00:00Z"),
+            false);
+    }
+
+    private static IReadOnlyList<ExpenseResponse> Expenses()
+    {
+        return
+        [
+            new ExpenseResponse(
+                Guid.Parse("0199f0a1-7c00-7000-8000-000000000051"),
+                HousingId,
+                NoticeId,
+                "Movers",
+                900000m,
+                "CLP",
+                900m,
+                new DateOnly(2026, 10, 20),
+                " Paid in cash "),
+        ];
+    }
+
+    private static IReadOnlyList<InventoryItemResponse> Items()
+    {
+        return
+        [
+            new InventoryItemResponse(
+                Guid.Parse("0199f0a1-7c00-7000-8000-000000000071"),
+                "Sheets",
+                ItemCategory.Linens,
+                ItemRoom.Bedroom,
+                2,
+                AcquisitionStatus.Owned,
+                MovingAction.Bring,
+                PackingStatus.NotPacked,
+                ItemPriority.Normal,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null),
+            new InventoryItemResponse(
+                Guid.Parse("0199f0a1-7c00-7000-8000-000000000072"),
+                "Sofa",
+                ItemCategory.Furniture,
+                ItemRoom.LivingRoom,
+                1,
+                AcquisitionStatus.Owned,
+                MovingAction.Bring,
+                PackingStatus.Packed,
+                ItemPriority.High,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null),
+        ];
+    }
+
+    private static IReadOnlyList<CalendarEventResponse> Events()
+    {
+        return
+        [
+            new CalendarEventResponse(
+                Guid.Parse("0199f0a1-7c00-7000-8000-000000000081"),
+                "Key handover",
+                CalendarEventKind.Appointment,
+                null,
+                new DateTimeOffset(2026, 11, 15, 12, 30, 0, TimeSpan.Zero),
+                new DateTimeOffset(2026, 11, 15, 13, 0, 0, TimeSpan.Zero),
+                "Landlord's office"),
+            new CalendarEventResponse(
+                Guid.Parse("0199f0a1-7c00-7000-8000-000000000082"),
+                "Move day",
+                CalendarEventKind.Milestone,
+                new DateOnly(2026, 12, 1),
+                null,
+                null,
+                null),
+        ];
+    }
+
+    private static IReadOnlyList<DocumentResponse> Documents()
+    {
+        return
+        [
+            new DocumentResponse(
+                DocumentId,
+                "passport.pdf",
+                "application/pdf",
+                12 * 1024,
+                DateTimeOffset.Parse("2026-10-24T13:50:00Z"),
+                DocumentCategory.Visa,
+                new DateOnly(2027, 6, 1),
+                [FlightId]),
+        ];
+    }
+}
