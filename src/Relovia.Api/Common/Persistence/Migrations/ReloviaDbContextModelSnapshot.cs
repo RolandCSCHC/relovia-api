@@ -1350,6 +1350,169 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateOnly>("OccursOn")
+                        .HasColumnType("date")
+                        .HasColumnName("occurs_on");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<bool>("ShowInApp")
+                        .HasColumnType("boolean")
+                        .HasColumnName("show_in_app");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notifications");
+
+                    b.HasIndex("RelocationId")
+                        .HasDatabaseName("ix_notifications_relocation_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_notifications_user_id");
+
+                    b.HasIndex("UserId", "Kind", "SourceId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_notifications_user_id_kind_source_id");
+
+                    b.ToTable("notifications", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_notifications_kind", "kind IN ('TaskDue', 'Milestone', 'Appointment', 'DocumentExpiration')");
+
+                            t.HasCheckConstraint("ck_notifications_title", "char_length(btrim(title)) > 0 AND char_length(title) <= 200");
+                        });
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Notifications.NotificationEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset?>("NextAttemptAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<Guid>("NotificationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("notification_id");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_emails");
+
+                    b.HasIndex("NotificationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_notification_emails_notification_id");
+
+                    b.HasIndex("Status", "NextAttemptAt")
+                        .HasDatabaseName("ix_notification_emails_status_next_attempt_at");
+
+                    b.ToTable("notification_emails", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_notification_emails_attempts", "attempts >= 0 AND attempts <= 5");
+
+                            t.HasCheckConstraint("ck_notification_emails_status", "status IN ('Pending', 'Sent', 'Failed')");
+                        });
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Notifications.NotificationPreference", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DaysBefore")
+                        .HasColumnType("integer")
+                        .HasColumnName("days_before");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("UserId")
+                        .HasName("pk_notification_preferences");
+
+                    b.ToTable("notification_preferences", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_notification_preferences_channel", "channel IN ('None', 'InApp', 'Email', 'Both')");
+
+                            t.HasCheckConstraint("ck_notification_preferences_days_before", "days_before >= 0 AND days_before <= 90");
+                        });
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Relocations.ChecklistTemplate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2071,6 +2234,51 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasConstraintName("fk_inventory_template_items_inventory_list_templates_inventory");
 
                     b.Navigation("InventoryListTemplate");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Notifications.Notification", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
+                        .WithMany()
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_relocations_relocation_id");
+
+                    b.HasOne("Relovia.Api.Features.Identity.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_users_user_id");
+
+                    b.Navigation("Relocation");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Notifications.NotificationEmail", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Notifications.Notification", "Notification")
+                        .WithOne()
+                        .HasForeignKey("Relovia.Api.Features.Notifications.NotificationEmail", "NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_emails_notifications_notification_id");
+
+                    b.Navigation("Notification");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Notifications.NotificationPreference", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Identity.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_preferences_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Relocations.Relocation", b =>

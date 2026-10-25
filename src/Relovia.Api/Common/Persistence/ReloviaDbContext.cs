@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.Calendar;
 using Relovia.Api.Features.Documents;
+using Relovia.Api.Features.Notifications;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Inventory;
 using Relovia.Api.Features.Relocations;
@@ -49,6 +50,12 @@ public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> 
     public DbSet<Document> Documents => Set<Document>();
 
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
+
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+
+    public DbSet<Notification> Notifications => Set<Notification>();
+
+    public DbSet<NotificationEmail> NotificationEmails => Set<NotificationEmail>();
 
     public DbSet<DocumentTaskLink> DocumentTaskLinks => Set<DocumentTaskLink>();
 
