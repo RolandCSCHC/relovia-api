@@ -16,6 +16,8 @@ public sealed record RelocationTaskResponse(
     Guid Id,
     string Code,
     string Title,
+    string? Description,
+    string? Url,
     int DaysBeforeMove,
     DateOnly? DueDate,
     TaskPhase Phase,

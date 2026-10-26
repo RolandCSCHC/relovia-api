@@ -12,6 +12,10 @@ public sealed class RelocationTask : ICreationTimestamp, IUpdateTimestamp
 
     public string Title { get; set; } = string.Empty;
 
+    public string? Description { get; set; }
+
+    public string? Url { get; set; }
+
     public int DaysBeforeMove { get; set; }
 
     public DateOnly? DueDate { get; set; }

@@ -23,6 +23,20 @@ public sealed class RelocationTaskConfiguration : IEntityTypeConfiguration<Reloc
             .IsRequired()
             .HasConversion(title => title.Trim(), title => title);
 
+        builder.Property(task => task.Description)
+            .HasMaxLength(RelocationTaskRules.DescriptionMaxLength)
+            .IsRequired(false)
+            .HasConversion(
+                description => string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+                description => description);
+
+        builder.Property(task => task.Url)
+            .HasMaxLength(RelocationTaskRules.UrlMaxLength)
+            .IsRequired(false)
+            .HasConversion(
+                url => string.IsNullOrWhiteSpace(url) ? null : url.Trim(),
+                url => url);
+
         builder.Property(task => task.DueDate)
             .HasColumnType("date")
             .IsRequired(false);
@@ -74,6 +88,12 @@ public sealed class RelocationTaskConfiguration : IEntityTypeConfiguration<Reloc
             table.HasCheckConstraint(
                 "ck_tasks_status",
                 "status IN ('Todo', 'InProgress', 'Done', 'Skipped')");
+            table.HasCheckConstraint(
+                "ck_tasks_description",
+                $"description IS NULL OR (char_length(btrim(description)) > 0 AND char_length(description) <= {RelocationTaskRules.DescriptionMaxLength})");
+            table.HasCheckConstraint(
+                "ck_tasks_url",
+                $"url IS NULL OR (char_length(btrim(url)) > 0 AND char_length(url) <= {RelocationTaskRules.UrlMaxLength})");
         });
     }
 }

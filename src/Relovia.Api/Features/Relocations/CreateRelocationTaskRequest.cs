@@ -14,4 +14,8 @@ public sealed class CreateRelocationTaskRequest
 
     [JsonRequired]
     public TaskPriority Priority { get; set; }
+
+    public string? Description { get; set; }
+
+    public string? Url { get; set; }
 }

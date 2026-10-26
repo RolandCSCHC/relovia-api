@@ -17,4 +17,8 @@ public sealed class UpdateRelocationTaskRequest
 
     [JsonRequired]
     public RelocationTaskStatus Status { get; set; }
+
+    public string? Description { get; set; }
+
+    public string? Url { get; set; }
 }

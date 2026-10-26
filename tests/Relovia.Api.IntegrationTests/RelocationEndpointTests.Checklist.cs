@@ -92,6 +92,10 @@ public sealed partial class RelocationEndpointTests
         var confirmedNotice = confirmed.Body.Tasks.Single(task => task.Code == "give-notice");
         var confirmedMovers = confirmed.Body.Tasks.Single(task => task.Code == "book-movers");
         Assert.Equal("Edited notice", confirmedNotice.Title);
+        Assert.Null(confirmedNotice.Description);
+        Assert.Null(confirmedNotice.Url);
+        Assert.Null(confirmedMovers.Description);
+        Assert.Null(confirmedMovers.Url);
         Assert.Equal(new DateOnly(2026, 11, 21), confirmedNotice.DueDate);
         Assert.Equal(RelocationTaskStatus.Todo, confirmedNotice.Status);
         Assert.Equal(notice.SourceTemplateTaskId, confirmedNotice.SourceTemplateTaskId);
@@ -327,6 +331,8 @@ public sealed partial class RelocationEndpointTests
         Assert.Equal(30, added.Body.DaysBeforeMove);
         Assert.Equal(new DateOnly(2026, 11, 1), added.Body.DueDate);
         Assert.Equal(RelocationTaskStatus.Todo, added.Body.Status);
+        Assert.Null(added.Body.Description);
+        Assert.Null(added.Body.Url);
         Assert.Null(added.Body.SourceTemplateTaskId);
 
         var hidden = await SendAsync<RelocationTaskResponse>(
@@ -514,6 +520,129 @@ public sealed partial class RelocationEndpointTests
         Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, postgres.SqlState);
     }
 
+    [Fact]
+    public async Task A_task_stores_a_description_and_a_link()
+    {
+        var owner = await SignInAsync("task-note@example.com");
+        using var client = CreateClient();
+
+        var created = await SendAsync<RelocationResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            "/api/relocations",
+            Request(name: "Noted", targetDate: new DateOnly(2026, 12, 1), destinationCountry: "US"));
+        Assert.Equal(HttpStatusCode.Created, created.Status);
+        var relocationId = created.Body!.Id;
+
+        var suggestion = await SendAsync<ChecklistSuggestionResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            $"/api/relocations/{relocationId}/checklist",
+            body: null);
+        var notice = suggestion.Body!.Tasks.Single(task => task.Code == "give-notice");
+        var confirmed = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/checklist",
+            new { tasks = new[] { Payload(notice) } });
+        Assert.Equal(HttpStatusCode.Created, confirmed.Status);
+        var task = confirmed.Body!.Tasks.Single();
+        Assert.Null(task.Description);
+        Assert.Null(task.Url);
+
+        var noted = await SendAsync<RelocationTaskResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Put,
+            $"/api/relocations/{relocationId}/tasks/{task.Id}",
+            new
+            {
+                title = task.Title,
+                dueDate = task.DueDate,
+                phase = task.Phase.ToString(),
+                priority = task.Priority.ToString(),
+                status = task.Status.ToString(),
+                description = " Tell them in writing. ",
+                url = " https://example.com/notice ",
+            });
+        Assert.Equal(HttpStatusCode.OK, noted.Status);
+        Assert.Equal("Tell them in writing.", noted.Body!.Description);
+        Assert.Equal("https://example.com/notice", noted.Body.Url);
+        Assert.Equal(notice.SourceTemplateTaskId, noted.Body.SourceTemplateTaskId);
+
+        await using (var db = _postgres.CreateContext())
+        {
+            var templateTitle = await db.TaskTemplates
+                .Where(templateTask => templateTask.Id == notice.SourceTemplateTaskId)
+                .Select(templateTask => templateTask.Title)
+                .SingleAsync();
+            Assert.Equal("Give notice on your current home", templateTitle);
+        }
+
+        var kept = await SendAsync<RelocationTaskResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Put,
+            $"/api/relocations/{relocationId}/tasks/{task.Id}",
+            UpdatePayload(noted.Body, status: "InProgress"));
+        Assert.Equal(HttpStatusCode.OK, kept.Status);
+        Assert.Equal(RelocationTaskStatus.InProgress, kept.Body!.Status);
+        Assert.Equal("Tell them in writing.", kept.Body.Description);
+        Assert.Equal("https://example.com/notice", kept.Body.Url);
+
+        var rejected = await SendAsync<JsonElement>(
+            client,
+            owner.Token,
+            HttpMethod.Put,
+            $"/api/relocations/{relocationId}/tasks/{task.Id}",
+            new
+            {
+                title = task.Title,
+                dueDate = task.DueDate,
+                phase = task.Phase.ToString(),
+                priority = task.Priority.ToString(),
+                status = "InProgress",
+                description = "Tell them in writing.",
+                url = "javascript:alert(1)",
+            });
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.Status);
+        Assert.Equal(
+            RelocationTaskRules.UrlMessage,
+            rejected.Body!.GetProperty("errors").GetProperty("url")[0].GetString());
+
+        var stored = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            $"/api/relocations/{relocationId}/tasks",
+            body: null);
+        var unchanged = stored.Body!.Tasks.Single();
+        Assert.Equal("Tell them in writing.", unchanged.Description);
+        Assert.Equal("https://example.com/notice", unchanged.Url);
+
+        var cleared = await SendAsync<RelocationTaskResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Put,
+            $"/api/relocations/{relocationId}/tasks/{task.Id}",
+            new
+            {
+                title = task.Title,
+                dueDate = task.DueDate,
+                phase = task.Phase.ToString(),
+                priority = task.Priority.ToString(),
+                status = "InProgress",
+                description = "  ",
+                url = "",
+            });
+        Assert.Equal(HttpStatusCode.OK, cleared.Status);
+        Assert.Null(cleared.Body!.Description);
+        Assert.Null(cleared.Body.Url);
+    }
+
     private static object Payload(
         SuggestedTaskResponse task,
         string? code = null,
@@ -539,6 +668,8 @@ public sealed partial class RelocationEndpointTests
             phase = task.Phase.ToString(),
             priority = task.Priority.ToString(),
             status = status ?? task.Status.ToString(),
+            description = task.Description,
+            url = task.Url,
         };
     }
 

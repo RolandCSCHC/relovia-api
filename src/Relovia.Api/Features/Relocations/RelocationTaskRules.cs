@@ -2,17 +2,29 @@ namespace Relovia.Api.Features.Relocations;
 
 public static class RelocationTaskRules
 {
+    public const int DescriptionMaxLength = 1000;
+
+    public const int UrlMaxLength = 2048;
+
+    public const string UrlMessage = "Link must be an absolute http or https address.";
+
     public static Dictionary<string, string[]> Validate(CreateRelocationTaskRequest request)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
-        RequireDetails(errors, request.Title, request.Phase, request.Priority);
+        RequireDetails(errors, request.Title, request.Phase, request.Priority, request.Description, request.Url);
         return errors;
     }
 
     public static Dictionary<string, string[]> Validate(UpdateRelocationTaskRequest request)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
-        RequireDetails(errors, request.Title, request.Phase, request.Priority);
+        RequireDetails(
+            errors,
+            request.Title,
+            request.Phase,
+            request.Priority,
+            request.Description,
+            request.Url);
 
         if (!Enum.IsDefined(request.Status))
         {
@@ -57,13 +69,39 @@ public static class RelocationTaskRules
         return errors;
     }
 
+    public static string? NormalizeOptional(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim();
+    }
+
+    public static bool IsWebAddress(string value)
+    {
+        if (value.Any(char.IsWhiteSpace))
+        {
+            return false;
+        }
+
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            && !string.IsNullOrEmpty(uri.Host)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    }
+
     private static void RequireDetails(
         Dictionary<string, string[]> errors,
         string title,
         TaskPhase phase,
-        TaskPriority priority)
+        TaskPriority priority,
+        string? description,
+        string? url)
     {
         RequireTitle(errors, "title", title);
+        OptionalText(errors, "description", description, DescriptionMaxLength, "Description");
+        OptionalWebAddress(errors, url);
 
         if (!Enum.IsDefined(phase))
         {
@@ -73,6 +111,39 @@ public static class RelocationTaskRules
         if (!Enum.IsDefined(priority))
         {
             errors["priority"] = ["Priority must be Low, Normal, or High."];
+        }
+    }
+
+    private static void OptionalText(
+        Dictionary<string, string[]> errors,
+        string key,
+        string? value,
+        int maxLength,
+        string label)
+    {
+        if (value is not null && value.Trim().Length > maxLength)
+        {
+            errors[key] = [$"{label} must be {maxLength} characters or fewer."];
+        }
+    }
+
+    private static void OptionalWebAddress(Dictionary<string, string[]> errors, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        var url = value.Trim();
+        if (url.Length > UrlMaxLength)
+        {
+            errors["url"] = [$"Link must be {UrlMaxLength} characters or fewer."];
+            return;
+        }
+
+        if (!IsWebAddress(url))
+        {
+            errors["url"] = [UrlMessage];
         }
     }
 

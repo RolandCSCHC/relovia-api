@@ -160,6 +160,8 @@ public sealed class ChecklistService(ReloviaDbContext db)
             RelocationId = relocation.Id,
             Code = TaskCodes.Create(request.Title, codes.ToHashSet(StringComparer.Ordinal)),
             Title = request.Title.Trim(),
+            Description = RelocationTaskRules.NormalizeOptional(request.Description),
+            Url = RelocationTaskRules.NormalizeOptional(request.Url),
             DaysBeforeMove = request.DueDate is DateOnly due && relocation.TargetDate is DateOnly target
                 ? ChecklistDueDate.DaysBefore(target, due)
                 : 0,
@@ -233,6 +235,8 @@ public sealed class ChecklistService(ReloviaDbContext db)
         }
 
         task.Title = request.Title.Trim();
+        task.Description = RelocationTaskRules.NormalizeOptional(request.Description);
+        task.Url = RelocationTaskRules.NormalizeOptional(request.Url);
         task.DueDate = request.DueDate;
         task.Phase = request.Phase;
         task.Priority = request.Priority;
@@ -298,6 +302,8 @@ public sealed class ChecklistService(ReloviaDbContext db)
                 task.Id,
                 task.Code,
                 task.Title,
+                task.Description,
+                task.Url,
                 task.DaysBeforeMove,
                 task.DueDate,
                 task.Phase,

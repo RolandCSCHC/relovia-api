@@ -41,6 +41,8 @@ public sealed class RelocationPacketTests
         var tasks = Section(packet, "Tasks");
         var notice = Entry(tasks, "Give notice");
         Assert.Equal("Housing", notice.Heading);
+        Assert.Contains("Tell the landlord in writing.", notice.Lines);
+        Assert.Contains("https://example.com/notice", notice.Lines);
         Assert.Contains("To do · High · Due 2 Oct 2026", notice.Lines);
         var flight = Entry(tasks, "Book the flight");
         Assert.Null(flight.Heading);
@@ -156,6 +158,8 @@ public sealed class RelocationPacketTests
         var text = string.Join('\n', document.GetPages().Select(page => page.Text));
         Assert.Contains("Berlin move", text);
         Assert.Contains("Give notice", text);
+        Assert.Contains("Tell the landlord in writing.", text);
+        Assert.Contains("https://example.com/notice", text);
         Assert.Contains("EUR $1,200.00", text);
         Assert.Contains("passport.pdf", text);
         Assert.Contains("Key handover", text);
@@ -178,7 +182,11 @@ public sealed class RelocationPacketTests
             zone);
 
         Assert.Equal("Berlin move summary.pdf", packet.FileName);
-        Assert.Equal("Give notice", Entry(Section(packet, "Open tasks"), "Give notice").Title);
+        var openNotice = Entry(Section(packet, "Open tasks"), "Give notice");
+        Assert.Equal("Give notice", openNotice.Title);
+        Assert.Contains("Housing · High · Due 2 Oct 2026", openNotice.Lines);
+        Assert.DoesNotContain("Tell the landlord in writing.", openNotice.Lines);
+        Assert.DoesNotContain("https://example.com/notice", openNotice.Lines);
         Assert.DoesNotContain(Section(packet, "Open tasks").Blocks.OfType<PacketBlock.Entry>(), entry => entry.Title == "Book the flight");
         Assert.Contains(
             Section(packet, "Money").Blocks.OfType<PacketBlock.Paragraph>(),
@@ -197,6 +205,8 @@ public sealed class RelocationPacketTests
         using var document = PdfDocument.Open(bytes);
         var text = string.Join('\n', document.GetPages().Select(page => page.Text));
         Assert.Contains("Give notice", text);
+        Assert.DoesNotContain("Tell the landlord in writing.", text);
+        Assert.DoesNotContain("https://example.com/notice", text);
         Assert.DoesNotContain("Movers", text);
     }
 
@@ -241,6 +251,8 @@ public sealed class RelocationPacketTests
                     NoticeId,
                     "give-notice",
                     "Give notice",
+                    "Tell the landlord in writing.",
+                    "https://example.com/notice",
                     60,
                     new DateOnly(2026, 10, 2),
                     TaskPhase.Housing,
@@ -253,6 +265,8 @@ public sealed class RelocationPacketTests
                     FlightId,
                     "book-flight",
                     "Book the flight",
+                    null,
+                    null,
                     30,
                     new DateOnly(2026, 11, 1),
                     TaskPhase.Housing,

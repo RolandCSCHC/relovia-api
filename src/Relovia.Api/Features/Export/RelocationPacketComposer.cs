@@ -229,10 +229,18 @@ public static class RelocationPacketComposer
             for (var index = 0; index < inPhase.Length; index++)
             {
                 var task = inPhase[index];
-                var lines = new List<string>
+                var lines = new List<string>();
+                if (!string.IsNullOrWhiteSpace(task.Description))
                 {
-                    Join(Status(task.Status), task.Priority.ToString(), Due(task.DueDate)),
-                };
+                    lines.Add(task.Description);
+                }
+
+                if (!string.IsNullOrWhiteSpace(task.Url))
+                {
+                    lines.Add(task.Url);
+                }
+
+                lines.Add(Join(Status(task.Status), task.Priority.ToString(), Due(task.DueDate)));
                 if (task.Dependencies.Count > 0)
                 {
                     var notes = task.Dependencies.Select(dependency =>

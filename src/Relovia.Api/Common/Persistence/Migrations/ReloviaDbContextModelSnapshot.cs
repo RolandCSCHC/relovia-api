@@ -1886,6 +1886,11 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("days_before_move");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
                     b.Property<DateOnly?>("DueDate")
                         .HasColumnType("date")
                         .HasColumnName("due_date");
@@ -1928,6 +1933,11 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at");
 
+                    b.Property<string>("Url")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("url");
+
                     b.HasKey("Id")
                         .HasName("pk_tasks");
 
@@ -1943,11 +1953,15 @@ namespace Relovia.Api.Common.Persistence.Migrations
 
                     b.ToTable("tasks", null, t =>
                         {
+                            t.HasCheckConstraint("ck_tasks_description", "description IS NULL OR (char_length(btrim(description)) > 0 AND char_length(description) <= 1000)");
+
                             t.HasCheckConstraint("ck_tasks_phase", "phase IN ('Preparation', 'Housing', 'Administration', 'Finances', 'Moving', 'Settlement')");
 
                             t.HasCheckConstraint("ck_tasks_priority", "priority IN ('Low', 'Normal', 'High')");
 
                             t.HasCheckConstraint("ck_tasks_status", "status IN ('Todo', 'InProgress', 'Done', 'Skipped')");
+
+                            t.HasCheckConstraint("ck_tasks_url", "url IS NULL OR (char_length(btrim(url)) > 0 AND char_length(url) <= 2048)");
                         });
                 });
 
