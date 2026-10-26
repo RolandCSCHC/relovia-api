@@ -11,9 +11,11 @@ public sealed record HousingOptionResponse(
     HousingFurnishing? Furnishing,
     DateOnly? AvailableOn,
     HousingStatus Status,
-    string? Notes)
+    string? Notes,
+    RentPeriod? RentPeriod,
+    decimal? RentPercentOfIncome)
 {
-    public static HousingOptionResponse From(HousingOption option)
+    public static HousingOptionResponse From(HousingOption option, decimal? rentPercentOfIncome)
     {
         return new HousingOptionResponse(
             option.Id,
@@ -26,6 +28,8 @@ public sealed record HousingOptionResponse(
             option.Furnishing,
             option.AvailableOn,
             option.Status,
-            option.Notes);
+            option.Notes,
+            option.RentPeriod,
+            rentPercentOfIncome);
     }
 }

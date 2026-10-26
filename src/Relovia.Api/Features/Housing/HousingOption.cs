@@ -18,6 +18,9 @@ public sealed class HousingOption : ICreationTimestamp, IUpdateTimestamp
 
     public decimal? Rent { get; set; }
 
+    /// <summary>Weekly or monthly when <see cref="Rent"/> is set. Empty when there is no rent.</summary>
+    public RentPeriod? RentPeriod { get; set; }
+
     public decimal? Deposit { get; set; }
 
     public string? CurrencyCode { get; set; }

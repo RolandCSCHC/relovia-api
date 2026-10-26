@@ -11,6 +11,8 @@ public sealed class SaveHousingOptionRequest
 
     public decimal? Rent { get; set; }
 
+    public RentPeriod? RentPeriod { get; set; }
+
     public decimal? Deposit { get; set; }
 
     public string? CurrencyCode { get; set; }

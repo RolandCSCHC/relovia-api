@@ -19,6 +19,8 @@ public static class BudgetRules
 
     public const decimal MaxAmount = 1_000_000_000_000m;
 
+    public const string IncomePairMessage = "Enter the amount and the currency, or leave both empty.";
+
     public static string NormalizeCurrencyCode(string value)
     {
         return value.Trim().ToUpperInvariant();
@@ -34,6 +36,28 @@ public static class BudgetRules
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
         RequireCurrency(errors, "currencyCode", request.CurrencyCode);
+        return errors;
+    }
+
+    public static Dictionary<string, string[]> Validate(SaveMonthlyNetIncomeRequest request)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        var currency = request.CurrencyCode?.Trim() ?? string.Empty;
+        var hasAmount = request.Amount is not null;
+        var hasCurrency = currency.Length > 0;
+        if (!hasAmount && !hasCurrency)
+        {
+            return errors;
+        }
+
+        if (!hasAmount || !hasCurrency)
+        {
+            errors["amount"] = [IncomePairMessage];
+            return errors;
+        }
+
+        RequireAmount(errors, "amount", request.Amount!.Value);
+        RequireCurrency(errors, "currencyCode", currency);
         return errors;
     }
 

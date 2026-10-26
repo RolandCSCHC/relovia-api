@@ -36,6 +36,22 @@ public sealed class BudgetController(BudgetService budgets) : BudgetControllerBa
         return Map(await budgets.SaveAsync(userId, relocationId, request, cancellationToken), Ok);
     }
 
+    [HttpPut("income")]
+    [EndpointName("saveMonthlyNetIncome")]
+    [EndpointSummary("Saves the optional monthly net income, or clears it. The budget currency must already exist.")]
+    public async Task<ActionResult<BudgetResponse>> SaveIncome(
+        Guid relocationId,
+        SaveMonthlyNetIncomeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        return Map(await budgets.SaveIncomeAsync(userId, relocationId, request, cancellationToken), Ok);
+    }
+
     [HttpPost("categories")]
     [EndpointName("createBudgetCategory")]
     [EndpointSummary("Adds a budget category.")]

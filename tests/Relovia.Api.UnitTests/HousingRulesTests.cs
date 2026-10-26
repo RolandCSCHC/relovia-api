@@ -55,6 +55,32 @@ public sealed class HousingRulesTests
         Assert.Equal([HousingRules.CurrencyWithoutMoneyMessage], currencyOnly["currencyCode"]);
         Assert.Equal([HousingRules.AmountPositiveMessage], zero["deposit"]);
         Assert.Equal([HousingRules.AmountScaleMessage], tooFine["rent"]);
+
+        var missingPeriod = HousingRules.Validate(new SaveHousingOptionRequest
+        {
+            Name = "Kreuzberg flat",
+            Rent = 1200m,
+            CurrencyCode = "EUR",
+            Status = HousingStatus.Considering,
+        });
+        var periodWithoutRent = HousingRules.Validate(new SaveHousingOptionRequest
+        {
+            Name = "Kreuzberg flat",
+            RentPeriod = RentPeriod.Weekly,
+            Status = HousingStatus.Considering,
+        });
+        var weekly = HousingRules.Validate(new SaveHousingOptionRequest
+        {
+            Name = "Kreuzberg flat",
+            Rent = 300m,
+            RentPeriod = RentPeriod.Weekly,
+            CurrencyCode = "EUR",
+            Status = HousingStatus.Considering,
+        });
+
+        Assert.Equal([HousingRules.RentPeriodRequiredMessage], missingPeriod["rentPeriod"]);
+        Assert.Equal([HousingRules.RentPeriodWithoutRentMessage], periodWithoutRent["rentPeriod"]);
+        Assert.Empty(weekly);
     }
 
     [Fact]

@@ -77,6 +77,7 @@ public sealed partial class RelocationEndpointTests
                 rent = 1200m,
                 deposit = 2400m,
                 currencyCode = "eur",
+                rentPeriod = "Monthly",
                 size = " 2 bedrooms ",
                 furnishing = "Furnished",
                 availableOn = new DateOnly(2026, 11, 1),
@@ -89,6 +90,9 @@ public sealed partial class RelocationEndpointTests
         Assert.Equal(1200m, chosen.Body.Rent);
         Assert.Equal(2400m, chosen.Body.Deposit);
         Assert.Equal("EUR", chosen.Body.CurrencyCode);
+        Assert.Equal(RentPeriod.Monthly, chosen.Body.RentPeriod);
+        Assert.Null(chosen.Body.RentPercentOfIncome);
+        Assert.Null(first.Body.RentPeriod);
         Assert.Equal("2 bedrooms", chosen.Body.Size);
         Assert.Equal(HousingFurnishing.Furnished, chosen.Body.Furnishing);
         Assert.Equal(new DateOnly(2026, 11, 1), chosen.Body.AvailableOn);

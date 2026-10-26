@@ -13,7 +13,9 @@ public sealed record BudgetResponse(
     BudgetTotalsResponse Totals,
     IReadOnlyList<UnconvertedAmountsResponse> Unconverted,
     DateTimeOffset? RatesAsOf,
-    bool RatesUnavailable);
+    bool RatesUnavailable,
+    decimal? MonthlyNetIncome = null,
+    string? MonthlyNetIncomeCurrency = null);
 
 public sealed record BudgetCategoryResponse(
     Guid Id,

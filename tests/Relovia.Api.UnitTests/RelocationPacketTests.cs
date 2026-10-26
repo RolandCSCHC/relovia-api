@@ -59,6 +59,8 @@ public sealed class RelocationPacketTests
 
         var budget = Section(packet, "Budget");
         Assert.Contains(budget.Blocks, block => block is PacketBlock.Paragraph paragraph
+            && paragraph.Text == "Monthly net income: EUR $4,000.00");
+        Assert.Contains(budget.Blocks, block => block is PacketBlock.Paragraph paragraph
             && paragraph.Text == "Estimated EUR $1,200.00");
         Assert.Contains(budget.Blocks, block => block is PacketBlock.Paragraph paragraph
             && paragraph.Text.Contains("XTS $900,000.00 spent (1 expense)", StringComparison.Ordinal));
@@ -88,7 +90,7 @@ public sealed class RelocationPacketTests
         var flat = Entry(housing, "Kreuzberg flat");
         Assert.Equal("Chosen", flat.Heading);
         Assert.Contains("Kreuzberg", flat.Lines);
-        Assert.Contains("Rent EUR $1,200.00 · Deposit EUR $2,400.00", flat.Lines);
+        Assert.Contains("Rent EUR $1,200.00 monthly · 30.0% of income · Deposit EUR $2,400.00", flat.Lines);
         Assert.Contains("2 bedrooms · Furnished · Available 1 Nov 2026", flat.Lines);
         Assert.Contains("Pets allowed", flat.Lines);
 
@@ -173,6 +175,8 @@ public sealed class RelocationPacketTests
         Assert.Contains("Key handover", text);
         Assert.Contains("Sheets", text);
         Assert.Contains("Kreuzberg flat", text);
+        Assert.Contains("Monthly net income", text);
+        Assert.Contains("30.0% of income", text);
         Assert.Contains("Northwind", text);
     }
 
@@ -203,6 +207,9 @@ public sealed class RelocationPacketTests
             paragraph => paragraph.Text == "Housing · EUR $800.00 left");
         Assert.DoesNotContain(
             Section(packet, "Money").Blocks.OfType<PacketBlock.Paragraph>(),
+            paragraph => paragraph.Text.Contains("Monthly net income", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            Section(packet, "Money").Blocks.OfType<PacketBlock.Paragraph>(),
             paragraph => paragraph.Text.Contains("Movers", StringComparison.Ordinal));
         Assert.Equal("Sheets × 2", Entry(Section(packet, "Still to pack"), "Sheets × 2").Title);
         Assert.DoesNotContain(Section(packet, "Still to pack").Blocks.OfType<PacketBlock.Entry>(), entry => entry.Title == "Sofa");
@@ -218,6 +225,8 @@ public sealed class RelocationPacketTests
         Assert.DoesNotContain("Tell the landlord in writing.", text);
         Assert.DoesNotContain("https://example.com/notice", text);
         Assert.DoesNotContain("Movers", text);
+        Assert.DoesNotContain("Monthly net income", text);
+        Assert.DoesNotContain("% of income", text);
     }
 
     private static PacketSection Section(RelocationPacket packet, string title)
@@ -349,7 +358,9 @@ public sealed class RelocationPacketTests
                 new UnconvertedAmountsResponse("XTS", 1, 900000m, 0, 0, 0, 0, 0),
             ],
             DateTimeOffset.Parse("2026-10-17T00:00:00Z"),
-            false);
+            false,
+            4000m,
+            "EUR");
     }
 
     private static IReadOnlyList<ExpenseResponse> Expenses()
@@ -425,7 +436,9 @@ public sealed class RelocationPacketTests
                 HousingFurnishing.Furnished,
                 new DateOnly(2026, 11, 1),
                 HousingStatus.Chosen,
-                "Pets allowed"),
+                "Pets allowed",
+                RentPeriod.Monthly,
+                30.0m),
         ];
     }
 

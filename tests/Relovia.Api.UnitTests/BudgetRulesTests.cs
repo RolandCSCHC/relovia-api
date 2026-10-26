@@ -35,6 +35,31 @@ public sealed class BudgetRulesTests
     }
 
     [Fact]
+    public void Monthly_net_income_is_both_fields_or_neither()
+    {
+        Assert.Empty(BudgetRules.Validate(new SaveMonthlyNetIncomeRequest()));
+        Assert.Empty(BudgetRules.Validate(new SaveMonthlyNetIncomeRequest
+        {
+            Amount = 4000m,
+            CurrencyCode = " eur ",
+        }));
+
+        var amountOnly = BudgetRules.Validate(new SaveMonthlyNetIncomeRequest { Amount = 4000m });
+        var currencyOnly = BudgetRules.Validate(new SaveMonthlyNetIncomeRequest { CurrencyCode = "EUR" });
+        var zero = BudgetRules.Validate(new SaveMonthlyNetIncomeRequest { Amount = 0m, CurrencyCode = "EUR" });
+        var tooFine = BudgetRules.Validate(new SaveMonthlyNetIncomeRequest
+        {
+            Amount = 10.12345m,
+            CurrencyCode = "EUR",
+        });
+
+        Assert.Equal([BudgetRules.IncomePairMessage], amountOnly["amount"]);
+        Assert.Equal([BudgetRules.IncomePairMessage], currencyOnly["amount"]);
+        Assert.Equal("Amount must be greater than zero.", zero["amount"][0]);
+        Assert.Equal("Amount can have at most 4 decimal places.", tooFine["amount"][0]);
+    }
+
+    [Fact]
     public void A_category_needs_a_name_within_the_limit()
     {
         Assert.Equal("Name is required.", BudgetRules.Validate(Category("   "))["name"][0]);

@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Relovia.Api.Common.Persistence;
+using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Relocations;
 
 namespace Relovia.Api.Features.Housing;
 
-public sealed class HousingService(ReloviaDbContext db)
+public sealed class HousingService(ReloviaDbContext db, ExchangeRateService exchangeRates)
 {
     public const string RelocationNotFoundTitle = "Relocation was not found.";
 
@@ -24,7 +25,8 @@ public sealed class HousingService(ReloviaDbContext db)
         var options = await db.HousingOptions.AsNoTracking()
             .Where(option => option.RelocationId == relocationId)
             .ToListAsync(cancellationToken);
-        return new HousingResult<IReadOnlyList<HousingOptionResponse>>.Success(Order(options));
+        return new HousingResult<IReadOnlyList<HousingOptionResponse>>.Success(
+            await PresentAsync(relocationId, options, cancellationToken));
     }
 
     public async Task<HousingResult<HousingOptionResponse>> CreateAsync(
@@ -64,7 +66,8 @@ public sealed class HousingService(ReloviaDbContext db)
             return new HousingResult<HousingOptionResponse>.Invalid(AlreadyChosen());
         }
 
-        return new HousingResult<HousingOptionResponse>.Success(HousingOptionResponse.From(option));
+        return new HousingResult<HousingOptionResponse>.Success(
+            await PresentOneAsync(relocationId, option, cancellationToken));
     }
 
     public async Task<HousingResult<HousingOptionResponse>> UpdateAsync(
@@ -103,7 +106,8 @@ public sealed class HousingService(ReloviaDbContext db)
             return new HousingResult<HousingOptionResponse>.Invalid(AlreadyChosen());
         }
 
-        return new HousingResult<HousingOptionResponse>.Success(HousingOptionResponse.From(option));
+        return new HousingResult<HousingOptionResponse>.Success(
+            await PresentOneAsync(relocationId, option, cancellationToken));
     }
 
     public async Task<HousingResult<Guid>> DeleteAsync(
@@ -139,18 +143,81 @@ public sealed class HousingService(ReloviaDbContext db)
         option.Status = request.Status;
         var hasMoney = request.Rent is not null || request.Deposit is not null;
         option.Rent = request.Rent;
+        option.RentPeriod = request.Rent is null ? null : request.RentPeriod;
         option.Deposit = request.Deposit;
         option.CurrencyCode = hasMoney ? HousingRules.NormalizeCurrency(request.CurrencyCode) : null;
     }
 
-    private static IReadOnlyList<HousingOptionResponse> Order(IReadOnlyList<HousingOption> options)
+    private async Task<HousingOptionResponse> PresentOneAsync(
+        Guid relocationId,
+        HousingOption option,
+        CancellationToken cancellationToken)
     {
+        var presented = await PresentAsync(relocationId, [option], cancellationToken);
+        return presented[0];
+    }
+
+    private async Task<IReadOnlyList<HousingOptionResponse>> PresentAsync(
+        Guid relocationId,
+        IReadOnlyList<HousingOption> options,
+        CancellationToken cancellationToken)
+    {
+        var income = await db.Budgets.AsNoTracking()
+            .Where(budget => budget.RelocationId == relocationId)
+            .Select(budget => new { budget.MonthlyNetIncome, budget.MonthlyNetIncomeCurrency })
+            .SingleOrDefaultAsync(cancellationToken);
+        var rates = await RatesForAsync(
+            income?.MonthlyNetIncomeCurrency,
+            options,
+            cancellationToken);
         return options
             .OrderBy(Rank)
             .ThenBy(option => option.Name, StringComparer.Ordinal)
             .ThenBy(option => option.Id)
-            .Select(HousingOptionResponse.From)
+            .Select(option => HousingOptionResponse.From(
+                option,
+                Share(option, income?.MonthlyNetIncome, income?.MonthlyNetIncomeCurrency, rates)))
             .ToArray();
+    }
+
+    private async Task<ExchangeRateTable?> RatesForAsync(
+        string? incomeCurrency,
+        IReadOnlyList<HousingOption> options,
+        CancellationToken cancellationToken)
+    {
+        if (incomeCurrency is null)
+        {
+            return null;
+        }
+
+        var needsRates = options.Any(option =>
+            option.Rent is not null
+            && option.CurrencyCode is string code
+            && !string.Equals(code, incomeCurrency, StringComparison.Ordinal));
+        if (!needsRates)
+        {
+            return null;
+        }
+
+        return await exchangeRates.GetAsync(incomeCurrency, cancellationToken);
+    }
+
+    private static decimal? Share(
+        HousingOption option,
+        decimal? income,
+        string? incomeCurrency,
+        ExchangeRateTable? rates)
+    {
+        if (income is not decimal amount
+            || incomeCurrency is not string currency
+            || option.Rent is not decimal rent
+            || option.RentPeriod is not RentPeriod period
+            || option.CurrencyCode is not string rentCurrency)
+        {
+            return null;
+        }
+
+        return RentShare.PercentOfIncome(rent, period, rentCurrency, amount, currency, rates);
     }
 
     private static int Rank(HousingOption option)

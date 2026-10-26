@@ -26,6 +26,11 @@ public sealed class HousingOptionConfiguration : IEntityTypeConfiguration<Housin
             .HasColumnType("numeric(18,4)")
             .IsRequired(false);
 
+        builder.Property(option => option.RentPeriod)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired(false);
+
         builder.Property(option => option.Deposit)
             .HasColumnType("numeric(18,4)")
             .IsRequired(false);
@@ -107,6 +112,17 @@ public sealed class HousingOptionConfiguration : IEntityTypeConfiguration<Housin
             table.HasCheckConstraint(
                 "ck_housing_options_rent",
                 "rent IS NULL OR rent > 0");
+            table.HasCheckConstraint(
+                "ck_housing_options_rent_period",
+                """
+                (
+                    rent IS NULL
+                    AND rent_period IS NULL
+                ) OR (
+                    rent IS NOT NULL
+                    AND rent_period IN ('Weekly', 'Monthly')
+                )
+                """);
             table.HasCheckConstraint(
                 "ck_housing_options_deposit",
                 "deposit IS NULL OR deposit > 0");

@@ -50,7 +50,9 @@ public static class BudgetComparison
         IEnumerable<BudgetCategory> categories,
         IEnumerable<Expense> expenses,
         ExchangeRateTable? rates,
-        IEnumerable<InventoryItem>? shopping = null)
+        IEnumerable<InventoryItem>? shopping = null,
+        decimal? monthlyNetIncome = null,
+        string? monthlyNetIncomeCurrency = null)
     {
         var categoryList = categories.ToList();
         var expenseList = expenses.ToList();
@@ -63,7 +65,9 @@ public static class BudgetComparison
                 new BudgetTotalsResponse(0, 0, 0),
                 [],
                 null,
-                false);
+                false,
+                monthlyNetIncome,
+                monthlyNetIncomeCurrency);
         }
 
         var convertedExpenses = expenseList
@@ -161,7 +165,9 @@ public static class BudgetComparison
             new BudgetTotalsResponse(totalEstimated, totalActual, totalEstimated - totalActual),
             unconverted,
             needsRates ? rates?.UpdatedAt : null,
-            needsRates && rates is null);
+            needsRates && rates is null,
+            monthlyNetIncome,
+            monthlyNetIncomeCurrency);
     }
 
     /// <summary>To-purchase items with a budget category and a price. Owned items are not a new cost.</summary>

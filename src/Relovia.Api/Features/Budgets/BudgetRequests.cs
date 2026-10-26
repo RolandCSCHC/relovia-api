@@ -8,6 +8,16 @@ public sealed class SaveBudgetRequest
     public string CurrencyCode { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// The monthly net income, or both fields empty to clear it. The amount and currency stay as entered.
+/// </summary>
+public sealed class SaveMonthlyNetIncomeRequest
+{
+    public decimal? Amount { get; set; }
+
+    public string? CurrencyCode { get; set; }
+}
+
 public sealed class SaveBudgetCategoryRequest
 {
     [JsonRequired]

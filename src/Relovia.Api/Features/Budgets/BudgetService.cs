@@ -74,6 +74,44 @@ public sealed class BudgetService(ReloviaDbContext db, ExchangeRateService excha
         return new BudgetResult<BudgetResponse>.Success(await BuildAsync(relocationId, cancellationToken));
     }
 
+    /// <summary>
+    /// Stores the monthly net income, or clears it when both fields are empty. The budget currency
+    /// has to exist first. The amount and currency are kept as entered and are not an estimate.
+    /// </summary>
+    public async Task<BudgetResult<BudgetResponse>> SaveIncomeAsync(
+        Guid userId,
+        Guid relocationId,
+        SaveMonthlyNetIncomeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var errors = BudgetRules.Validate(request);
+        if (errors.Count > 0)
+        {
+            return new BudgetResult<BudgetResponse>.Invalid(errors);
+        }
+
+        if (!await RelocationExistsAsync(userId, relocationId, cancellationToken))
+        {
+            return new BudgetResult<BudgetResponse>.NotFound(RelocationNotFoundTitle);
+        }
+
+        var budget = await db.Budgets.SingleOrDefaultAsync(
+            candidate => candidate.RelocationId == relocationId,
+            cancellationToken);
+        if (budget is null)
+        {
+            return new BudgetResult<BudgetResponse>.Conflict(BudgetNotSetUpTitle);
+        }
+
+        var currency = string.IsNullOrWhiteSpace(request.CurrencyCode)
+            ? null
+            : BudgetRules.NormalizeCurrencyCode(request.CurrencyCode);
+        budget.MonthlyNetIncome = currency is null ? null : request.Amount;
+        budget.MonthlyNetIncomeCurrency = currency;
+        await db.SaveChangesAsync(cancellationToken);
+        return new BudgetResult<BudgetResponse>.Success(await BuildAsync(relocationId, cancellationToken));
+    }
+
     public async Task<BudgetResult<BudgetCategoryResponse>> CreateCategoryAsync(
         Guid userId,
         Guid relocationId,
@@ -323,10 +361,16 @@ public sealed class BudgetService(ReloviaDbContext db, ExchangeRateService excha
 
     private async Task<BudgetResponse> BuildAsync(Guid relocationId, CancellationToken cancellationToken)
     {
-        var currencyCode = await db.Budgets.AsNoTracking()
+        var stored = await db.Budgets.AsNoTracking()
             .Where(budget => budget.RelocationId == relocationId)
-            .Select(budget => budget.CurrencyCode)
+            .Select(budget => new
+            {
+                budget.CurrencyCode,
+                budget.MonthlyNetIncome,
+                budget.MonthlyNetIncomeCurrency,
+            })
             .SingleOrDefaultAsync(cancellationToken);
+        var currencyCode = stored?.CurrencyCode;
         var categories = await db.BudgetCategories.AsNoTracking()
             .Include(category => category.Estimates)
             .Where(category => category.RelocationId == relocationId)
@@ -346,7 +390,14 @@ public sealed class BudgetService(ReloviaDbContext db, ExchangeRateService excha
             rates = await exchangeRates.GetAsync(currencyCode, cancellationToken);
         }
 
-        return BudgetComparison.Build(currencyCode, categories, expenses, rates, shopping);
+        return BudgetComparison.Build(
+            currencyCode,
+            categories,
+            expenses,
+            rates,
+            shopping,
+            stored?.MonthlyNetIncome,
+            stored?.MonthlyNetIncomeCurrency);
     }
 
     private async Task<BudgetCategoryResponse> CategoryResponseAsync(

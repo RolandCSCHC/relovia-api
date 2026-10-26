@@ -23,6 +23,8 @@ public sealed class BudgetComparisonTests
         var response = BudgetComparison.Build(null, [], [], null);
 
         Assert.Null(response.CurrencyCode);
+        Assert.Null(response.MonthlyNetIncome);
+        Assert.Null(response.MonthlyNetIncomeCurrency);
         Assert.Empty(response.Categories);
         Assert.Equal(0m, response.Totals.Estimated);
         Assert.Empty(response.Unconverted);
@@ -45,6 +47,23 @@ public sealed class BudgetComparisonTests
         Assert.Equal(["Furnishing", "Housing"], response.Categories.Select(category => category.Name));
         Assert.Null(response.RatesAsOf);
         Assert.False(response.RatesUnavailable);
+    }
+
+    [Fact]
+    public void Monthly_net_income_is_kept_and_left_out_of_the_totals()
+    {
+        var response = BudgetComparison.Build(
+            "EUR",
+            [_housing],
+            [],
+            null,
+            monthlyNetIncome: 4000m,
+            monthlyNetIncomeCurrency: "NZD");
+
+        Assert.Equal(4000m, response.MonthlyNetIncome);
+        Assert.Equal("NZD", response.MonthlyNetIncomeCurrency);
+        Assert.Equal(0m, response.Totals.Estimated);
+        Assert.Equal(0m, response.Totals.Actual);
     }
 
     [Fact]

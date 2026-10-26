@@ -29,6 +29,10 @@ public static class HousingRules
 
     public const string InternationalOnlyMessage = "Housing comparison is for an international move.";
 
+    public const string RentPeriodRequiredMessage = "Choose weekly or monthly.";
+
+    public const string RentPeriodWithoutRentMessage = "A home with no rent has no rent period.";
+
     public static Dictionary<string, string[]> Validate(SaveHousingOptionRequest request)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
@@ -57,6 +61,18 @@ public static class HousingRules
         if (request.Deposit is { } deposit)
         {
             RequireAmount(errors, "deposit", deposit);
+        }
+
+        if (hasRent)
+        {
+            if (request.RentPeriod is not { } period || !Enum.IsDefined(period))
+            {
+                errors["rentPeriod"] = [RentPeriodRequiredMessage];
+            }
+        }
+        else if (request.RentPeriod is not null)
+        {
+            errors["rentPeriod"] = [RentPeriodWithoutRentMessage];
         }
 
         var currency = request.CurrencyCode?.Trim() ?? string.Empty;

@@ -280,10 +280,16 @@ public static class RelocationPacketComposer
         var blocks = new List<PacketBlock>
         {
             new PacketBlock.Paragraph($"Budget currency: {currency}"),
-            new PacketBlock.Paragraph($"Estimated {ExportText.Money(budget.Totals.Estimated, currency)}"),
-            new PacketBlock.Paragraph($"Spent {ExportText.Money(budget.Totals.Actual, currency)}"),
-            new PacketBlock.Paragraph($"Remaining {ExportText.Remaining(budget.Totals.Remaining, currency)}"),
         };
+        if (budget.MonthlyNetIncome is decimal income && budget.MonthlyNetIncomeCurrency is string incomeCurrency)
+        {
+            blocks.Add(new PacketBlock.Paragraph(
+                $"Monthly net income: {ExportText.Money(income, incomeCurrency, exact: true)}"));
+        }
+
+        blocks.Add(new PacketBlock.Paragraph($"Estimated {ExportText.Money(budget.Totals.Estimated, currency)}"));
+        blocks.Add(new PacketBlock.Paragraph($"Spent {ExportText.Money(budget.Totals.Actual, currency)}"));
+        blocks.Add(new PacketBlock.Paragraph($"Remaining {ExportText.Remaining(budget.Totals.Remaining, currency)}"));
         if (budget.RatesUnavailable)
         {
             blocks.Add(new PacketBlock.Paragraph(
@@ -497,7 +503,7 @@ public static class RelocationPacketComposer
 
             var money = Join(
                 home.Rent is decimal rent && home.CurrencyCode is string currency
-                    ? $"Rent {ExportText.Money(rent, currency, exact: true)}"
+                    ? RentLine(home, rent, currency)
                     : null,
                 home.Deposit is decimal deposit && home.CurrencyCode is string depositCurrency
                     ? $"Deposit {ExportText.Money(deposit, depositCurrency, exact: true)}"
@@ -524,6 +530,24 @@ public static class RelocationPacketComposer
             return (PacketBlock)new PacketBlock.Entry(home.Status.ToString(), home.Name, lines);
         }).ToArray();
         return new PacketSection("Housing", blocks);
+    }
+
+    private static string RentLine(HousingOptionResponse home, decimal rent, string currency)
+    {
+        var period = home.RentPeriod switch
+        {
+            RentPeriod.Weekly => "weekly",
+            RentPeriod.Monthly => "monthly",
+            _ => null,
+        };
+        var amount = $"Rent {ExportText.Money(rent, currency, exact: true)}";
+        var withPeriod = period is null ? amount : $"{amount} {period}";
+        if (home.RentPercentOfIncome is not decimal percent)
+        {
+            return withPeriod;
+        }
+
+        return $"{withPeriod} · {percent.ToString("0.0", CultureInfo.InvariantCulture)}% of income";
     }
 
     private static PacketSection? Applications(

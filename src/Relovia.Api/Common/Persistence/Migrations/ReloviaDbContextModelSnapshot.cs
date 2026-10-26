@@ -140,6 +140,15 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("currency_code");
 
+                    b.Property<decimal?>("MonthlyNetIncome")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("monthly_net_income");
+
+                    b.Property<string>("MonthlyNetIncomeCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("monthly_net_income_currency");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("updated_at");
@@ -150,6 +159,8 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.ToTable("budgets", null, t =>
                         {
                             t.HasCheckConstraint("ck_budgets_currency_code", "currency_code ~ '^[A-Z]{3}$'");
+
+                            t.HasCheckConstraint("ck_budgets_monthly_net_income", "(\n    monthly_net_income IS NULL\n    AND monthly_net_income_currency IS NULL\n) OR (\n    monthly_net_income > 0\n    AND monthly_net_income_currency ~ '^[A-Z]{3}$'\n)");
                         });
                 });
 
@@ -545,6 +556,11 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasColumnType("numeric(18,4)")
                         .HasColumnName("rent");
 
+                    b.Property<string>("RentPeriod")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("rent_period");
+
                     b.Property<string>("Size")
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)")
@@ -583,6 +599,8 @@ namespace Relovia.Api.Common.Persistence.Migrations
                             t.HasCheckConstraint("ck_housing_options_notes", "notes IS NULL OR (char_length(btrim(notes)) > 0 AND char_length(notes) <= 1000)");
 
                             t.HasCheckConstraint("ck_housing_options_rent", "rent IS NULL OR rent > 0");
+
+                            t.HasCheckConstraint("ck_housing_options_rent_period", "(\n    rent IS NULL\n    AND rent_period IS NULL\n) OR (\n    rent IS NOT NULL\n    AND rent_period IN ('Weekly', 'Monthly')\n)");
 
                             t.HasCheckConstraint("ck_housing_options_size", "size IS NULL OR (char_length(btrim(size)) > 0 AND char_length(size) <= 80)");
 
