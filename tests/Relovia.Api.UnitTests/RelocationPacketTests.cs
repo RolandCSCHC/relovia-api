@@ -1,7 +1,9 @@
+using Relovia.Api.Features.Applications;
 using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.Calendar;
 using Relovia.Api.Features.Documents;
 using Relovia.Api.Features.Export;
+using Relovia.Api.Features.Housing;
 using Relovia.Api.Features.Inventory;
 using Relovia.Api.Features.Relocations;
 using UglyToad.PdfPig;
@@ -25,6 +27,8 @@ public sealed class RelocationPacketTests
             Budget(),
             Expenses(),
             Items(),
+            Homes(),
+            Applications(),
             Events(),
             Documents(),
             zone);
@@ -70,6 +74,22 @@ public sealed class RelocationPacketTests
         Assert.Contains("Linens · Owned · Bring · Not packed · Normal", sheets.Lines);
         Assert.Equal("Living room", Entry(inventory, "Sofa").Heading);
 
+        var housing = Section(packet, "Housing");
+        var flat = Entry(housing, "Kreuzberg flat");
+        Assert.Equal("Chosen", flat.Heading);
+        Assert.Contains("Kreuzberg", flat.Lines);
+        Assert.Contains("Rent EUR $1,200.00 · Deposit EUR $2,400.00", flat.Lines);
+        Assert.Contains("2 bedrooms · Furnished · Available 1 Nov 2026", flat.Lines);
+        Assert.Contains("Pets allowed", flat.Lines);
+
+        var applications = Section(packet, "Applications");
+        var northwind = Entry(applications, "Northwind");
+        Assert.Equal("Interviewing", northwind.Heading);
+        Assert.Contains("Engineer · Berlin", northwind.Lines);
+        Assert.Contains("Applied 1 Oct 2026 · Next 15 Nov 2026", northwind.Lines);
+        Assert.Contains("Visa or relocation support", northwind.Lines);
+        Assert.Contains("Second round", northwind.Lines);
+
         var calendar = Section(packet, "Calendar");
         var handover = Entry(calendar, "Key handover");
         Assert.Contains("Appointment · 15 Nov 2026, 09:30 – 10:00", handover.Lines);
@@ -89,13 +109,30 @@ public sealed class RelocationPacketTests
             [],
             [],
             [],
+            [],
+            [],
             TimeZoneInfo.Utc);
         Assert.Equal("Checklist not confirmed", empty.Progress);
         Assert.Equal("None yet.", Paragraph(Section(empty, "Tasks")));
         Assert.Equal("Not set up yet.", Paragraph(Section(empty, "Budget")));
         Assert.Equal("None yet.", Paragraph(Section(empty, "Inventory")));
+        Assert.Equal("None yet.", Paragraph(Section(empty, "Housing")));
+        Assert.Equal("None yet.", Paragraph(Section(empty, "Applications")));
         Assert.Equal("None yet.", Paragraph(Section(empty, "Calendar")));
         Assert.Equal("None yet.", Paragraph(Section(empty, "Documents")));
+
+        var domestic = RelocationPacketComposer.Compose(
+            Relocation() with { DestinationCountryCode = "CL", IsInternational = false },
+            new RelocationTasksResponse(new TaskProgressResponse(0, 0, 0), []),
+            new BudgetResponse(null, [], new BudgetTotalsResponse(0, 0, 0), [], null, false),
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            TimeZoneInfo.Utc);
+        Assert.DoesNotContain(domestic.Sections, section => section.Title is "Housing" or "Applications");
     }
 
     [Fact]
@@ -107,6 +144,8 @@ public sealed class RelocationPacketTests
             Budget(),
             Expenses(),
             Items(),
+            Homes(),
+            Applications(),
             Events(),
             Documents(),
             TimeZoneInfo.Utc);
@@ -121,6 +160,8 @@ public sealed class RelocationPacketTests
         Assert.Contains("passport.pdf", text);
         Assert.Contains("Key handover", text);
         Assert.Contains("Sheets", text);
+        Assert.Contains("Kreuzberg flat", text);
+        Assert.Contains("Northwind", text);
     }
 
     [Fact]
@@ -325,6 +366,42 @@ public sealed class RelocationPacketTests
                 null,
                 null,
                 null),
+        ];
+    }
+
+    private static IReadOnlyList<HousingOptionResponse> Homes()
+    {
+        return
+        [
+            new HousingOptionResponse(
+                Guid.Parse("0199f0a1-7c00-7000-8000-000000000071"),
+                "Kreuzberg flat",
+                "Kreuzberg",
+                1200m,
+                2400m,
+                "EUR",
+                "2 bedrooms",
+                HousingFurnishing.Furnished,
+                new DateOnly(2026, 11, 1),
+                HousingStatus.Chosen,
+                "Pets allowed"),
+        ];
+    }
+
+    private static IReadOnlyList<JobApplicationResponse> Applications()
+    {
+        return
+        [
+            new JobApplicationResponse(
+                Guid.Parse("0199f0a1-7c00-7000-8000-000000000081"),
+                "Northwind",
+                "Engineer",
+                "Berlin",
+                new DateOnly(2026, 10, 1),
+                new DateOnly(2026, 11, 15),
+                JobApplicationStatus.Interviewing,
+                true,
+                "Second round"),
         ];
     }
 

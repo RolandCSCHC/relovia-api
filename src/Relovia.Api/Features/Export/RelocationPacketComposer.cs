@@ -1,7 +1,9 @@
 using System.Globalization;
+using Relovia.Api.Features.Applications;
 using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.Calendar;
 using Relovia.Api.Features.Documents;
+using Relovia.Api.Features.Housing;
 using Relovia.Api.Features.Inventory;
 using Relovia.Api.Features.Relocations;
 
@@ -15,11 +17,23 @@ public static class RelocationPacketComposer
         BudgetResponse budget,
         IReadOnlyList<ExpenseResponse> expenses,
         IReadOnlyList<InventoryItemResponse> items,
+        IReadOnlyList<HousingOptionResponse> homes,
+        IReadOnlyList<JobApplicationResponse> applications,
         IReadOnlyList<CalendarEventResponse> events,
         IReadOnlyList<DocumentResponse> documents,
         TimeZoneInfo timeZone)
     {
         var taskTitles = tasks.Tasks.ToDictionary(task => task.Id, task => task.Title);
+        var sections = new List<PacketSection>
+        {
+            Tasks(tasks, taskTitles),
+            Budget(budget, expenses, taskTitles),
+            Inventory(items),
+        };
+        Add(sections, Homes(relocation, homes));
+        Add(sections, Applications(relocation, applications));
+        sections.Add(Calendar(events, timeZone));
+        sections.Add(Documents(documents, taskTitles));
         return new RelocationPacket(
             ExportText.FileName(relocation.Name),
             relocation.Name,
@@ -30,13 +44,7 @@ public static class RelocationPacketComposer
                 relocation.Purpose.ToString(),
                 relocation.Status.ToString()),
             Progress(tasks),
-            [
-                Tasks(tasks, taskTitles),
-                Budget(budget, expenses, taskTitles),
-                Inventory(items),
-                Calendar(events, timeZone),
-                Documents(documents, taskTitles),
-            ]);
+            sections);
     }
 
     public static RelocationPacket ComposeSummary(
@@ -450,6 +458,107 @@ public static class RelocationPacketComposer
             return (PacketBlock)new PacketBlock.Entry(null, calendarEvent.Title, lines);
         }).ToArray();
         return new PacketSection("Calendar", blocks);
+    }
+
+    private static void Add(List<PacketSection> sections, PacketSection? section)
+    {
+        if (section is not null)
+        {
+            sections.Add(section);
+        }
+    }
+
+    private static PacketSection? Homes(
+        RelocationResponse relocation,
+        IReadOnlyList<HousingOptionResponse> homes)
+    {
+        if (homes.Count == 0)
+        {
+            return relocation.IsInternational
+                ? new PacketSection("Housing", [new PacketBlock.Paragraph("None yet.")])
+                : null;
+        }
+
+        var blocks = homes.Select(home =>
+        {
+            var lines = new List<string>();
+            if (!string.IsNullOrWhiteSpace(home.Area))
+            {
+                lines.Add(home.Area);
+            }
+
+            var money = Join(
+                home.Rent is decimal rent && home.CurrencyCode is string currency
+                    ? $"Rent {ExportText.Money(rent, currency, exact: true)}"
+                    : null,
+                home.Deposit is decimal deposit && home.CurrencyCode is string depositCurrency
+                    ? $"Deposit {ExportText.Money(deposit, depositCurrency, exact: true)}"
+                    : null);
+            if (money.Length > 0)
+            {
+                lines.Add(money);
+            }
+
+            var facts = Join(
+                home.Size,
+                home.Furnishing?.ToString(),
+                home.AvailableOn is DateOnly available ? $"Available {ExportText.Date(available)}" : null);
+            if (facts.Length > 0)
+            {
+                lines.Add(facts);
+            }
+
+            if (!string.IsNullOrWhiteSpace(home.Notes))
+            {
+                lines.Add(home.Notes);
+            }
+
+            return (PacketBlock)new PacketBlock.Entry(home.Status.ToString(), home.Name, lines);
+        }).ToArray();
+        return new PacketSection("Housing", blocks);
+    }
+
+    private static PacketSection? Applications(
+        RelocationResponse relocation,
+        IReadOnlyList<JobApplicationResponse> applications)
+    {
+        if (applications.Count == 0)
+        {
+            return relocation.IsInternational
+                ? new PacketSection("Applications", [new PacketBlock.Paragraph("None yet.")])
+                : null;
+        }
+
+        var blocks = applications.Select(application =>
+        {
+            var lines = new List<string>();
+            var place = Join(application.Role, application.Location);
+            if (place.Length > 0)
+            {
+                lines.Add(place);
+            }
+
+            var dates = Join(
+                application.AppliedOn is DateOnly applied ? $"Applied {ExportText.Date(applied)}" : null,
+                application.NextOn is DateOnly next ? $"Next {ExportText.Date(next)}" : null);
+            if (dates.Length > 0)
+            {
+                lines.Add(dates);
+            }
+
+            if (application.IncludesSupport is bool support)
+            {
+                lines.Add(support ? "Visa or relocation support" : "No visa or relocation support");
+            }
+
+            if (!string.IsNullOrWhiteSpace(application.Notes))
+            {
+                lines.Add(application.Notes);
+            }
+
+            return (PacketBlock)new PacketBlock.Entry(application.Status.ToString(), application.Employer, lines);
+        }).ToArray();
+        return new PacketSection("Applications", blocks);
     }
 
     private static PacketSection Documents(
