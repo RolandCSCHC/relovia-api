@@ -57,6 +57,9 @@ public sealed class RelocationTaskConfiguration : IEntityTypeConfiguration<Reloc
             .IsRequired()
             .HasDefaultValue(RelocationTaskStatus.Todo);
 
+        builder.Property(task => task.Position)
+            .IsRequired();
+
         builder.Property(task => task.CreatedAt)
             .HasColumnType("timestamptz");
 
@@ -66,6 +69,10 @@ public sealed class RelocationTaskConfiguration : IEntityTypeConfiguration<Reloc
         builder.HasIndex(task => new { task.RelocationId, task.Code })
             .IsUnique()
             .HasDatabaseName("ux_tasks_relocation_id_code");
+
+        builder.HasIndex(task => new { task.RelocationId, task.Position })
+            .IsUnique()
+            .HasDatabaseName("ux_tasks_relocation_id_position");
 
         builder.HasOne(task => task.Relocation)
             .WithMany(relocation => relocation.Tasks)
@@ -94,6 +101,9 @@ public sealed class RelocationTaskConfiguration : IEntityTypeConfiguration<Reloc
             table.HasCheckConstraint(
                 "ck_tasks_url",
                 $"url IS NULL OR (char_length(btrim(url)) > 0 AND char_length(url) <= {RelocationTaskRules.UrlMaxLength})");
+            table.HasCheckConstraint(
+                "ck_tasks_position",
+                "position >= 0");
         });
     }
 }

@@ -5,6 +5,9 @@ namespace Relovia.Api.Features.Relocations;
 
 public sealed class ChecklistService(ReloviaDbContext db)
 {
+    // A swap or a close-up writes a temporary position first, so the unique
+    // (relocation, position) index stays valid until the final numbers are stored.
+    private const int PositionOffset = 1_000_000;
     public async Task<ChecklistSuggestionResponse?> SuggestAsync(
         Guid userId,
         Guid relocationId,
@@ -49,8 +52,9 @@ public sealed class ChecklistService(ReloviaDbContext db)
 
         var tasks = new List<RelocationTask>();
         var byCode = new Dictionary<string, RelocationTask>(StringComparer.Ordinal);
-        foreach (var requested in request.Tasks)
+        for (var index = 0; index < request.Tasks.Count; index++)
         {
+            var requested = request.Tasks[index];
             var code = ChecklistTemplateRules.NormalizeCode(requested.Code);
             var source = suggested[code];
             var task = new RelocationTask
@@ -63,6 +67,7 @@ public sealed class ChecklistService(ReloviaDbContext db)
                 Phase = requested.Phase,
                 Priority = requested.Priority,
                 Status = RelocationTaskStatus.Todo,
+                Position = index,
                 SourceTemplateTaskId = source.SourceTemplateTaskId,
             };
             tasks.Add(task);
@@ -151,14 +156,15 @@ public sealed class ChecklistService(ReloviaDbContext db)
             return new RelocationTaskCreateResult.RelocationNotFound();
         }
 
-        var codes = await db.RelocationTasks.AsNoTracking()
+        var existing = await db.RelocationTasks.AsNoTracking()
             .Where(task => task.RelocationId == relocation.Id)
-            .Select(task => task.Code)
+            .Select(task => new { task.Code, task.Position })
             .ToListAsync(cancellationToken);
+        var codes = existing.Select(row => row.Code).ToHashSet(StringComparer.Ordinal);
         var task = new RelocationTask
         {
             RelocationId = relocation.Id,
-            Code = TaskCodes.Create(request.Title, codes.ToHashSet(StringComparer.Ordinal)),
+            Code = TaskCodes.Create(request.Title, codes),
             Title = request.Title.Trim(),
             Description = RelocationTaskRules.NormalizeOptional(request.Description),
             Url = RelocationTaskRules.NormalizeOptional(request.Url),
@@ -169,6 +175,7 @@ public sealed class ChecklistService(ReloviaDbContext db)
             Phase = request.Phase,
             Priority = request.Priority,
             Status = RelocationTaskStatus.Todo,
+            Position = existing.Count == 0 ? 0 : existing.Max(row => row.Position) + 1,
         };
         db.RelocationTasks.Add(task);
         await db.SaveChangesAsync(cancellationToken);
@@ -201,10 +208,82 @@ public sealed class ChecklistService(ReloviaDbContext db)
             .Where(dependency => dependency.RelocationId == relocation.Id
                 && (dependency.TaskId == task.Id || dependency.DependsOnTaskId == task.Id))
             .ToListAsync(cancellationToken);
+        var removed = task.Position;
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         db.TaskDependencies.RemoveRange(links);
         db.RelocationTasks.Remove(task);
         await db.SaveChangesAsync(cancellationToken);
+        await CloseGapAsync(relocation.Id, removed, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return new RelocationTaskDeleteResult.Deleted();
+    }
+
+    public Task<RelocationTaskMoveResult> MoveEarlierAsync(
+        Guid userId,
+        Guid relocationId,
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        return MoveAsync(userId, relocationId, taskId, -1, cancellationToken);
+    }
+
+    public Task<RelocationTaskMoveResult> MoveLaterAsync(
+        Guid userId,
+        Guid relocationId,
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        return MoveAsync(userId, relocationId, taskId, 1, cancellationToken);
+    }
+
+    private async Task<RelocationTaskMoveResult> MoveAsync(
+        Guid userId,
+        Guid relocationId,
+        Guid taskId,
+        int direction,
+        CancellationToken cancellationToken)
+    {
+        var relocation = await FindRelocationAsync(userId, relocationId, cancellationToken);
+        if (relocation is null)
+        {
+            return new RelocationTaskMoveResult.RelocationNotFound();
+        }
+
+        var tasks = await db.RelocationTasks
+            .Where(task => task.RelocationId == relocation.Id)
+            .OrderBy(task => task.Position)
+            .ThenBy(task => task.Id)
+            .ToListAsync(cancellationToken);
+        var index = tasks.FindIndex(task => task.Id == taskId);
+        if (index < 0)
+        {
+            return new RelocationTaskMoveResult.TaskNotFound();
+        }
+
+        var neighborIndex = index + direction;
+        if (neighborIndex < 0 || neighborIndex >= tasks.Count)
+        {
+            var message = direction < 0
+                ? RelocationTaskRules.AlreadyFirstMessage
+                : RelocationTaskRules.AlreadyLastMessage;
+            return new RelocationTaskMoveResult.NotAllowed(message);
+        }
+
+        var task = tasks[index];
+        var neighbor = tasks[neighborIndex];
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var taskPosition = task.Position;
+        var neighborPosition = neighbor.Position;
+        task.Position = taskPosition + PositionOffset;
+        neighbor.Position = neighborPosition + PositionOffset;
+        await db.SaveChangesAsync(cancellationToken);
+        task.Position = neighborPosition;
+        neighbor.Position = taskPosition;
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        var response = await ListAsync(userId, relocationId, cancellationToken);
+        return new RelocationTaskMoveResult.Moved(response!);
     }
 
     public async Task<RelocationTaskUpdateResult> UpdateAsync(
@@ -272,6 +351,30 @@ public sealed class ChecklistService(ReloviaDbContext db)
             .ToListAsync(cancellationToken);
     }
 
+    private async Task CloseGapAsync(Guid relocationId, int removed, CancellationToken cancellationToken)
+    {
+        var later = await db.RelocationTasks
+            .Where(task => task.RelocationId == relocationId && task.Position > removed)
+            .ToListAsync(cancellationToken);
+        if (later.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var task in later)
+        {
+            task.Position += PositionOffset;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        foreach (var task in later)
+        {
+            task.Position -= PositionOffset + 1;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<Dictionary<Guid, Guid[]>> DocumentsByTaskAsync(
         Guid relocationId,
         CancellationToken cancellationToken)
@@ -295,9 +398,8 @@ public sealed class ChecklistService(ReloviaDbContext db)
         var byId = tasks.ToDictionary(task => task.Id);
         var progress = TaskProgressResponse.From(TaskProgress.Calculate(tasks.Select(task => task.Status)));
         var responses = tasks
-            .OrderBy(task => task.DueDate == null)
-            .ThenBy(task => task.DueDate)
-            .ThenBy(task => task.Code, StringComparer.Ordinal)
+            .OrderBy(task => task.Position)
+            .ThenBy(task => task.Id)
             .Select(task => new RelocationTaskResponse(
                 task.Id,
                 task.Code,
@@ -323,7 +425,8 @@ public sealed class ChecklistService(ReloviaDbContext db)
                     .ToArray(),
                 documentsByTask is not null && documentsByTask.TryGetValue(task.Id, out var documentIds)
                     ? documentIds
-                    : []))
+                    : [],
+                task.Position))
             .ToArray();
 
         return new RelocationTasksResponse(progress, responses);

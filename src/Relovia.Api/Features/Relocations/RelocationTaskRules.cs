@@ -8,6 +8,10 @@ public static class RelocationTaskRules
 
     public const string UrlMessage = "Link must be an absolute http or https address.";
 
+    public const string AlreadyFirstMessage = "This task is already first.";
+
+    public const string AlreadyLastMessage = "This task is already last.";
+
     public static Dictionary<string, string[]> Validate(CreateRelocationTaskRequest request)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);

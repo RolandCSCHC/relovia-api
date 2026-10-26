@@ -25,6 +25,7 @@ public sealed record RelocationTaskResponse(
     RelocationTaskStatus Status,
     Guid? SourceTemplateTaskId,
     IReadOnlyList<TaskDependencyResponse> Dependencies,
-    IReadOnlyList<Guid> DocumentIds);
+    IReadOnlyList<Guid> DocumentIds,
+    int Position);
 
 public sealed record TaskDependencyResponse(Guid TaskId, string Code, bool IsSatisfied);

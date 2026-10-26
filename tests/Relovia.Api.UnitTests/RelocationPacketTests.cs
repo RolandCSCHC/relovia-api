@@ -14,6 +14,7 @@ public sealed class RelocationPacketTests
 {
     private static readonly Guid NoticeId = Guid.Parse("0199f0a1-7c00-7000-8000-000000000021");
     private static readonly Guid FlightId = Guid.Parse("0199f0a1-7c00-7000-8000-000000000022");
+    private static readonly Guid BoxesId = Guid.Parse("0199f0a1-7c00-7000-8000-000000000023");
     private static readonly Guid HousingId = Guid.Parse("0199f0a1-7c00-7000-8000-000000000031");
     private static readonly Guid DocumentId = Guid.Parse("0199f0a1-7c00-7000-8000-000000000061");
 
@@ -39,15 +40,22 @@ public sealed class RelocationPacketTests
         Assert.Equal("0 of 1 done", packet.Progress);
 
         var tasks = Section(packet, "Tasks");
+        Assert.Equal(
+            ["Give notice", "Book the flight", "Pack boxes"],
+            tasks.Blocks.OfType<PacketBlock.Entry>().Select(entry => entry.Title));
         var notice = Entry(tasks, "Give notice");
-        Assert.Equal("Housing", notice.Heading);
+        Assert.Null(notice.Heading);
         Assert.Contains("Tell the landlord in writing.", notice.Lines);
         Assert.Contains("https://example.com/notice", notice.Lines);
-        Assert.Contains("To do · High · Due 2 Oct 2026", notice.Lines);
+        Assert.Contains("Housing · To do · High · Due 2 Oct 2026", notice.Lines);
         var flight = Entry(tasks, "Book the flight");
         Assert.Null(flight.Heading);
+        Assert.Contains("Housing · Skipped · Normal · Due 1 Nov 2026", flight.Lines);
         Assert.Contains("After Give notice (waiting)", flight.Lines);
         Assert.Contains("1 document", flight.Lines);
+        var boxes = Entry(tasks, "Pack boxes");
+        Assert.Null(boxes.Heading);
+        Assert.Contains("Preparation · To do · Normal", boxes.Lines);
 
         var budget = Section(packet, "Budget");
         Assert.Contains(budget.Blocks, block => block is PacketBlock.Paragraph paragraph
@@ -182,6 +190,8 @@ public sealed class RelocationPacketTests
             zone);
 
         Assert.Equal("Berlin move summary.pdf", packet.FileName);
+        var openTasks = Section(packet, "Open tasks").Blocks.OfType<PacketBlock.Entry>().Select(entry => entry.Title);
+        Assert.Equal(["Give notice", "Pack boxes"], openTasks);
         var openNotice = Entry(Section(packet, "Open tasks"), "Give notice");
         Assert.Equal("Give notice", openNotice.Title);
         Assert.Contains("Housing · High · Due 2 Oct 2026", openNotice.Lines);
@@ -248,6 +258,21 @@ public sealed class RelocationPacketTests
             new TaskProgressResponse(0, 1, 0),
             [
                 new RelocationTaskResponse(
+                    BoxesId,
+                    "pack-boxes",
+                    "Pack boxes",
+                    null,
+                    null,
+                    3,
+                    null,
+                    TaskPhase.Preparation,
+                    TaskPriority.Normal,
+                    RelocationTaskStatus.Todo,
+                    null,
+                    [],
+                    [],
+                    2),
+                new RelocationTaskResponse(
                     NoticeId,
                     "give-notice",
                     "Give notice",
@@ -260,7 +285,8 @@ public sealed class RelocationPacketTests
                     RelocationTaskStatus.Todo,
                     null,
                     [],
-                    []),
+                    [],
+                    0),
                 new RelocationTaskResponse(
                     FlightId,
                     "book-flight",
@@ -274,7 +300,8 @@ public sealed class RelocationPacketTests
                     RelocationTaskStatus.Skipped,
                     null,
                     [new TaskDependencyResponse(NoticeId, "give-notice", false)],
-                    [DocumentId]),
+                    [DocumentId],
+                    1),
             ]);
     }
 

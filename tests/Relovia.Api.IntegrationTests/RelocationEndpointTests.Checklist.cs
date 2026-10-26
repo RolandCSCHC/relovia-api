@@ -86,7 +86,8 @@ public sealed partial class RelocationEndpointTests
             });
         Assert.Equal(HttpStatusCode.Created, confirmed.Status);
         Assert.Equal($"/api/relocations/{relocationId}/tasks", confirmed.Response.Headers.Location?.OriginalString);
-        Assert.Equal(["book-movers", "give-notice"], confirmed.Body!.Tasks.Select(task => task.Code));
+        Assert.Equal(["give-notice", "book-movers"], confirmed.Body!.Tasks.Select(task => task.Code));
+        Assert.Equal([0, 1], confirmed.Body.Tasks.Select(task => task.Position));
         Assert.Equal(0, confirmed.Body.Progress.Done);
         Assert.Equal(2, confirmed.Body.Progress.Counted);
         var confirmedNotice = confirmed.Body.Tasks.Single(task => task.Code == "give-notice");
@@ -334,6 +335,7 @@ public sealed partial class RelocationEndpointTests
         Assert.Null(added.Body.Description);
         Assert.Null(added.Body.Url);
         Assert.Null(added.Body.SourceTemplateTaskId);
+        Assert.Equal(2, added.Body.Position);
 
         var hidden = await SendAsync<RelocationTaskResponse>(
             otherClient,
@@ -358,9 +360,8 @@ public sealed partial class RelocationEndpointTests
             $"/api/relocations/{relocationId}/tasks",
             body: null);
         Assert.Equal(HttpStatusCode.OK, tasks.Status);
-        Assert.Equal(
-            ["book-movers", "pack-the-kitchen"],
-            tasks.Body!.Tasks.Select(task => task.Code).OrderBy(code => code, StringComparer.Ordinal));
+        Assert.Equal(["book-movers", "pack-the-kitchen"], tasks.Body!.Tasks.Select(task => task.Code));
+        Assert.Equal([0, 1], tasks.Body.Tasks.Select(task => task.Position));
         Assert.Empty(tasks.Body.Tasks.Single(task => task.Code == "book-movers").Dependencies);
     }
 
@@ -641,6 +642,147 @@ public sealed partial class RelocationEndpointTests
         Assert.Equal(HttpStatusCode.OK, cleared.Status);
         Assert.Null(cleared.Body!.Description);
         Assert.Null(cleared.Body.Url);
+    }
+
+    [Fact]
+    public async Task Moving_a_task_changes_only_its_place()
+    {
+        var owner = await SignInAsync("task-order@example.com");
+        var other = await SignInAsync("task-order-other@example.com");
+        using var client = CreateClient();
+        using var otherClient = CreateClient();
+
+        var created = await SendAsync<RelocationResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            "/api/relocations",
+            Request(name: "Order", targetDate: new DateOnly(2026, 12, 1), destinationCountry: "US"));
+        Assert.Equal(HttpStatusCode.Created, created.Status);
+        var relocationId = created.Body!.Id;
+
+        var suggestion = await SendAsync<ChecklistSuggestionResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            $"/api/relocations/{relocationId}/checklist",
+            body: null);
+        var notice = suggestion.Body!.Tasks.Single(task => task.Code == "give-notice");
+        var movers = suggestion.Body.Tasks.Single(task => task.Code == "book-movers");
+        var confirmed = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/checklist",
+            new { tasks = new[] { Payload(movers), Payload(notice) } });
+        Assert.Equal(HttpStatusCode.Created, confirmed.Status);
+        Assert.Equal(["book-movers", "give-notice"], confirmed.Body!.Tasks.Select(task => task.Code));
+        Assert.Equal([0, 1], confirmed.Body.Tasks.Select(task => task.Position));
+        var storedMovers = confirmed.Body.Tasks[0];
+        var storedNotice = confirmed.Body.Tasks[1];
+
+        var added = await SendAsync<RelocationTaskResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/tasks",
+            new
+            {
+                title = "Pack the kitchen",
+                dueDate = new DateOnly(2026, 10, 1),
+                phase = "Moving",
+                priority = "Low",
+            });
+        Assert.Equal(HttpStatusCode.Created, added.Status);
+        Assert.Equal(2, added.Body!.Position);
+
+        var listed = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            $"/api/relocations/{relocationId}/tasks",
+            body: null);
+        Assert.Equal(
+            ["book-movers", "give-notice", "pack-the-kitchen"],
+            listed.Body!.Tasks.Select(task => task.Code));
+
+        var moved = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/tasks/{added.Body.Id}/earlier",
+            body: null);
+        Assert.Equal(HttpStatusCode.OK, moved.Status);
+        Assert.Equal(
+            ["book-movers", "pack-the-kitchen", "give-notice"],
+            moved.Body!.Tasks.Select(task => task.Code));
+        Assert.Equal([0, 1, 2], moved.Body.Tasks.Select(task => task.Position));
+        var packed = moved.Body.Tasks.Single(task => task.Code == "pack-the-kitchen");
+        Assert.Equal(new DateOnly(2026, 10, 1), packed.DueDate);
+        Assert.Equal(TaskPhase.Moving, packed.Phase);
+        Assert.Equal(TaskPriority.Low, packed.Priority);
+        Assert.Equal(RelocationTaskStatus.Todo, packed.Status);
+        var noticeAfter = moved.Body.Tasks.Single(task => task.Code == "give-notice");
+        Assert.Equal(storedNotice.DueDate, noticeAfter.DueDate);
+        Assert.Equal(storedNotice.Phase, noticeAfter.Phase);
+        Assert.Equal(storedNotice.Priority, noticeAfter.Priority);
+        Assert.Equal(storedNotice.Status, noticeAfter.Status);
+        Assert.Equal(storedNotice.Id, Assert.Single(moved.Body.Tasks.Single(task => task.Code == "book-movers").Dependencies).TaskId);
+
+        var alreadyFirst = await SendAsync<JsonElement>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/tasks/{storedMovers.Id}/earlier",
+            body: null);
+        Assert.Equal(HttpStatusCode.BadRequest, alreadyFirst.Status);
+        Assert.Equal(RelocationTaskRules.AlreadyFirstMessage, alreadyFirst.Body!.GetProperty("title").GetString());
+
+        var alreadyLast = await SendAsync<JsonElement>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/tasks/{noticeAfter.Id}/later",
+            body: null);
+        Assert.Equal(HttpStatusCode.BadRequest, alreadyLast.Status);
+        Assert.Equal(RelocationTaskRules.AlreadyLastMessage, alreadyLast.Body!.GetProperty("title").GetString());
+
+        var hidden = await SendAsync<RelocationTasksResponse>(
+            otherClient,
+            other.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/tasks/{packed.Id}/later",
+            body: null);
+        Assert.Equal(HttpStatusCode.NotFound, hidden.Status);
+
+        var later = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Post,
+            $"/api/relocations/{relocationId}/tasks/{storedMovers.Id}/later",
+            body: null);
+        Assert.Equal(HttpStatusCode.OK, later.Status);
+        Assert.Equal(
+            ["pack-the-kitchen", "book-movers", "give-notice"],
+            later.Body!.Tasks.Select(task => task.Code));
+        Assert.Equal(storedNotice.DueDate, later.Body.Tasks.Single(task => task.Code == "give-notice").DueDate);
+
+        var deleted = await SendAsync<RelocationTaskResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Delete,
+            $"/api/relocations/{relocationId}/tasks/{storedMovers.Id}",
+            body: null);
+        Assert.Equal(HttpStatusCode.NoContent, deleted.Status);
+
+        var remaining = await SendAsync<RelocationTasksResponse>(
+            client,
+            owner.Token,
+            HttpMethod.Get,
+            $"/api/relocations/{relocationId}/tasks",
+            body: null);
+        Assert.Equal(["pack-the-kitchen", "give-notice"], remaining.Body!.Tasks.Select(task => task.Code));
+        Assert.Equal([0, 1], remaining.Body.Tasks.Select(task => task.Position));
     }
 
     private static object Payload(

@@ -80,6 +80,8 @@ public static class RelocationPacketComposer
         IReadOnlyDictionary<Guid, string> taskTitles)
     {
         var open = tasks.Tasks
+            .OrderBy(task => task.Position)
+            .ThenBy(task => task.Id)
             .Where(task => task.Status is RelocationTaskStatus.Todo or RelocationTaskStatus.InProgress)
             .ToArray();
         if (open.Length == 0)
@@ -222,13 +224,11 @@ public static class RelocationPacketComposer
             return new PacketSection("Tasks", [new PacketBlock.Paragraph("None yet.")]);
         }
 
-        var blocks = new List<PacketBlock>();
-        foreach (var phase in Enum.GetValues<TaskPhase>())
-        {
-            var inPhase = tasks.Tasks.Where(task => task.Phase == phase).ToArray();
-            for (var index = 0; index < inPhase.Length; index++)
+        var blocks = tasks.Tasks
+            .OrderBy(task => task.Position)
+            .ThenBy(task => task.Id)
+            .Select(task =>
             {
-                var task = inPhase[index];
                 var lines = new List<string>();
                 if (!string.IsNullOrWhiteSpace(task.Description))
                 {
@@ -240,7 +240,7 @@ public static class RelocationPacketComposer
                     lines.Add(task.Url);
                 }
 
-                lines.Add(Join(Status(task.Status), task.Priority.ToString(), Due(task.DueDate)));
+                lines.Add(Join(task.Phase.ToString(), Status(task.Status), task.Priority.ToString(), Due(task.DueDate)));
                 if (task.Dependencies.Count > 0)
                 {
                     var notes = task.Dependencies.Select(dependency =>
@@ -260,9 +260,9 @@ public static class RelocationPacketComposer
                     lines.Add($"{task.DocumentIds.Count} documents");
                 }
 
-                blocks.Add(new PacketBlock.Entry(index == 0 ? phase.ToString() : null, task.Title, lines));
-            }
-        }
+                return (PacketBlock)new PacketBlock.Entry(null, task.Title, lines);
+            })
+            .ToArray();
 
         return new PacketSection("Tasks", blocks);
     }

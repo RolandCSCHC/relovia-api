@@ -75,6 +75,28 @@ public sealed class RelocationTasksController(ChecklistService checklists) : Con
         };
     }
 
+    [HttpPost("{taskId:guid}/earlier")]
+    [EndpointName("moveRelocationTaskEarlier")]
+    [EndpointSummary("Swaps this task with the one before it. The first task has no earlier move.")]
+    public Task<ActionResult<RelocationTasksResponse>> MoveEarlier(
+        Guid relocationId,
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        return Move(relocationId, taskId, checklists.MoveEarlierAsync, cancellationToken);
+    }
+
+    [HttpPost("{taskId:guid}/later")]
+    [EndpointName("moveRelocationTaskLater")]
+    [EndpointSummary("Swaps this task with the one after it. The last task has no later move.")]
+    public Task<ActionResult<RelocationTasksResponse>> MoveLater(
+        Guid relocationId,
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        return Move(relocationId, taskId, checklists.MoveLaterAsync, cancellationToken);
+    }
+
     [HttpPut("{taskId:guid}")]
     [EndpointName("updateRelocationTask")]
     [EndpointSummary("Updates a task owned by the signed-in user.")]
@@ -99,6 +121,32 @@ public sealed class RelocationTasksController(ChecklistService checklists) : Con
                 title: "Task was not found."),
             RelocationTaskUpdateResult.Updated updated => Ok(updated.Task),
             _ => throw new InvalidOperationException("Unexpected task update result."),
+        };
+    }
+
+    private async Task<ActionResult<RelocationTasksResponse>> Move(
+        Guid relocationId,
+        Guid taskId,
+        Func<Guid, Guid, Guid, CancellationToken, Task<RelocationTaskMoveResult>> move,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await move(userId, relocationId, taskId, cancellationToken);
+        return result switch
+        {
+            RelocationTaskMoveResult.RelocationNotFound => NotFoundRelocation(),
+            RelocationTaskMoveResult.TaskNotFound => Problem(
+                statusCode: StatusCodes.Status404NotFound,
+                title: "Task was not found."),
+            RelocationTaskMoveResult.NotAllowed denied => Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: denied.Message),
+            RelocationTaskMoveResult.Moved moved => Ok(moved.Tasks),
+            _ => throw new InvalidOperationException("Unexpected task move result."),
         };
     }
 

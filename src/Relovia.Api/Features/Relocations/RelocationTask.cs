@@ -26,6 +26,8 @@ public sealed class RelocationTask : ICreationTimestamp, IUpdateTimestamp
 
     public RelocationTaskStatus Status { get; set; } = RelocationTaskStatus.Todo;
 
+    public int Position { get; set; }
+
     public Guid? SourceTemplateTaskId { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }

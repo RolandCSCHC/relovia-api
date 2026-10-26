@@ -1901,6 +1901,10 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("phase");
 
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
                     b.Property<string>("Priority")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -1951,11 +1955,17 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_tasks_relocation_id_code");
 
+                    b.HasIndex("RelocationId", "Position")
+                        .IsUnique()
+                        .HasDatabaseName("ux_tasks_relocation_id_position");
+
                     b.ToTable("tasks", null, t =>
                         {
                             t.HasCheckConstraint("ck_tasks_description", "description IS NULL OR (char_length(btrim(description)) > 0 AND char_length(description) <= 1000)");
 
                             t.HasCheckConstraint("ck_tasks_phase", "phase IN ('Preparation', 'Housing', 'Administration', 'Finances', 'Moving', 'Settlement')");
+
+                            t.HasCheckConstraint("ck_tasks_position", "position >= 0");
 
                             t.HasCheckConstraint("ck_tasks_priority", "priority IN ('Low', 'Normal', 'High')");
 
