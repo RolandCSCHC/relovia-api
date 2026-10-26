@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Relovia.Api.Features.Applications;
 using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.Calendar;
 using Relovia.Api.Features.Documents;
+using Relovia.Api.Features.Housing;
 using Relovia.Api.Features.Notifications;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Inventory;
@@ -50,6 +52,10 @@ public sealed partial class ReloviaDbContext(DbContextOptions<ReloviaDbContext> 
     public DbSet<Document> Documents => Set<Document>();
 
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
+
+    public DbSet<HousingOption> HousingOptions => Set<HousingOption>();
+
+    public DbSet<JobApplication> JobApplications => Set<JobApplication>();
 
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
 

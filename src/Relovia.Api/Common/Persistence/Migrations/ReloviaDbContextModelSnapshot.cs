@@ -45,6 +45,85 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.ToTable("data_protection_keys", (string)null);
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Applications.JobApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly?>("AppliedOn")
+                        .HasColumnType("date")
+                        .HasColumnName("applied_on");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Employer")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("employer");
+
+                    b.Property<bool?>("IncludesSupport")
+                        .HasColumnType("boolean")
+                        .HasColumnName("includes_support");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("location");
+
+                    b.Property<DateOnly?>("NextOn")
+                        .HasColumnType("date")
+                        .HasColumnName("next_on");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("role");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_job_applications");
+
+                    b.HasIndex("RelocationId")
+                        .HasDatabaseName("ix_job_applications_relocation_id");
+
+                    b.ToTable("job_applications", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_job_applications_employer", "char_length(btrim(employer)) > 0 AND char_length(employer) <= 200");
+
+                            t.HasCheckConstraint("ck_job_applications_location", "location IS NULL OR (char_length(btrim(location)) > 0 AND char_length(location) <= 200)");
+
+                            t.HasCheckConstraint("ck_job_applications_notes", "notes IS NULL OR (char_length(btrim(notes)) > 0 AND char_length(notes) <= 1000)");
+
+                            t.HasCheckConstraint("ck_job_applications_role", "char_length(btrim(role)) > 0 AND char_length(role) <= 200");
+
+                            t.HasCheckConstraint("ck_job_applications_status", "status IN ('Applied', 'Interviewing', 'Offer', 'Accepted', 'Rejected', 'Withdrawn')");
+                        });
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Budgets.Budget", b =>
                 {
                     b.Property<Guid>("RelocationId")
@@ -411,6 +490,104 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasDatabaseName("ix_document_task_links_relocation_id_task_id");
 
                     b.ToTable("document_task_links", (string)null);
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Housing.HousingOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Area")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("area");
+
+                    b.Property<DateOnly?>("AvailableOn")
+                        .HasColumnType("date")
+                        .HasColumnName("available_on");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_code");
+
+                    b.Property<decimal?>("Deposit")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("deposit");
+
+                    b.Property<string>("Furnishing")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("furnishing");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("RelocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("relocation_id");
+
+                    b.Property<decimal?>("Rent")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("rent");
+
+                    b.Property<string>("Size")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("size");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_housing_options");
+
+                    b.HasIndex("RelocationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_housing_options_one_chosen")
+                        .HasFilter("status = 'Chosen'");
+
+                    b.ToTable("housing_options", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_housing_options_area", "area IS NULL OR (char_length(btrim(area)) > 0 AND char_length(area) <= 200)");
+
+                            t.HasCheckConstraint("ck_housing_options_currency", "(\n    rent IS NULL\n    AND deposit IS NULL\n    AND currency_code IS NULL\n) OR (\n    currency_code ~ '^[A-Z]{3}$'\n    AND (rent IS NOT NULL OR deposit IS NOT NULL)\n)");
+
+                            t.HasCheckConstraint("ck_housing_options_deposit", "deposit IS NULL OR deposit > 0");
+
+                            t.HasCheckConstraint("ck_housing_options_furnishing", "furnishing IS NULL OR furnishing IN ('Furnished', 'Unfurnished')");
+
+                            t.HasCheckConstraint("ck_housing_options_name", "char_length(btrim(name)) > 0 AND char_length(name) <= 200");
+
+                            t.HasCheckConstraint("ck_housing_options_notes", "notes IS NULL OR (char_length(btrim(notes)) > 0 AND char_length(notes) <= 1000)");
+
+                            t.HasCheckConstraint("ck_housing_options_rent", "rent IS NULL OR rent > 0");
+
+                            t.HasCheckConstraint("ck_housing_options_size", "size IS NULL OR (char_length(btrim(size)) > 0 AND char_length(size) <= 80)");
+
+                            t.HasCheckConstraint("ck_housing_options_status", "status IN ('Considering', 'Viewing', 'Offered', 'Chosen', 'Dropped')");
+                        });
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Identity.AuthSession", b =>
@@ -2058,6 +2235,18 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Relovia.Api.Features.Applications.JobApplication", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
+                        .WithMany()
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_job_applications_relocations_relocation_id");
+
+                    b.Navigation("Relocation");
+                });
+
             modelBuilder.Entity("Relovia.Api.Features.Budgets.Budget", b =>
                 {
                     b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
@@ -2170,6 +2359,18 @@ namespace Relovia.Api.Common.Persistence.Migrations
                     b.Navigation("Document");
 
                     b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("Relovia.Api.Features.Housing.HousingOption", b =>
+                {
+                    b.HasOne("Relovia.Api.Features.Relocations.Relocation", "Relocation")
+                        .WithMany()
+                        .HasForeignKey("RelocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_housing_options_relocations_relocation_id");
+
+                    b.Navigation("Relocation");
                 });
 
             modelBuilder.Entity("Relovia.Api.Features.Identity.AuthSession", b =>
