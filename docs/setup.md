@@ -87,9 +87,7 @@ ASP.NET Core configuration. Environment variables use `__` between nested keys, 
 | `Web:RequestTokenCookieDomain` | No | Leave empty so `XSRF-TOKEN` stays on the API host. Set a parent domain, such as `.example.com`, only when the app and API are sibling subdomains. |
 | `Authentication:Google:ClientId` | For Google sign-in | OAuth client id. |
 | `Authentication:Google:ClientSecret` | For Google sign-in | OAuth client secret. |
-| `Access:Restricted` | No | Default `true`. While true, only `Access:AllowedEmails` can use the API: every other signed-in user gets `403` and `hasAccess: false` from `GET /api/auth/me`. Set to `false` to open the app to everyone. |
-| `Access:AllowedEmails` | No | Google accounts that can use the app while it is restricted, and that receive the "someone is interested" email. `appsettings.json` lists `rcschlosser@miuandes.cl`. Environment variables: `Access__AllowedEmails__0`, `Access__AllowedEmails__1`. |
-| `Email:ApiKey` | For the interest email | [Resend](https://resend.com) API key. Without it nobody is emailed; the API logs a warning and tries again the next time that person signs in. Keep it out of Git. |
+| `Email:ApiKey` | For reminder email | [Resend](https://resend.com) API key. Without it a reminder email is left unsent and tried again later. Keep it out of Git. |
 | `Email:From` | No | Sender. Default `Relovia <onboarding@resend.dev>`, which only delivers to the Resend account owner. Use an address on a verified domain to email anyone else. |
 | `Session:SlidingLifetime` | No | Default `14.00:00:00`. Must be positive. |
 | `Session:AbsoluteLifetime` | No | Default `30.00:00:00`. Must cover the sliding lifetime. |
@@ -133,21 +131,15 @@ Render environment variables:
 | `Storage__S3__AccessKey` | Neon credential `token_id` |
 | `Storage__S3__SecretKey` | Neon credential `s3_secret_access_key` |
 
-Add the Resend key so the developer is emailed when someone signs in to show interest:
+Add the Resend key so reminder email can be sent:
 
 | Variable | Value |
 | --- | --- |
 | `Email__ApiKey` | Resend API key |
 
-Email goes to Resend over HTTPS, not SMTP: Render's free tier blocks outbound SMTP ports, so a connection to a mail server just times out. Create the Resend account with an address listed in `Access:AllowedEmails`. Resend's test sender (`onboarding@resend.dev`, the default) can only deliver to the address that owns the account.
+Email goes to Resend over HTTPS, not SMTP: Render's free tier blocks outbound SMTP ports, so a connection to a mail server just times out. Resend's test sender (`onboarding@resend.dev`, the default) can only deliver to the address that owns the account. Use an address on a verified domain to email anyone else.
 
 `GET /health` checks the database. Changing an environment variable takes effect after a new deploy.
-
-### Closed preview
-
-Until the app is ready, production is restricted (`Access:Restricted` defaults to `true`). Anyone can sign in with Google, but only the emails in `Access:AllowedEmails` can use the app. The first time someone else signs in, the API emails the allowed addresses once (`users.interest_notified_at` records it). A failed or unconfigured email never blocks sign-in, and is retried on that person's next sign-in.
-
-To let another person in, add their email as `Access__AllowedEmails__1` and redeploy. To open the app to everyone, set `Access__Restricted` to `false`.
 
 ### Production migrations
 

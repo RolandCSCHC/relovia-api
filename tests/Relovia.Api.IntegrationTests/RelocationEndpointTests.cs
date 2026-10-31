@@ -11,7 +11,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
-using Relovia.Api.Features.Access;
 using Relovia.Api.Features.ExchangeRates;
 using Relovia.Api.Features.Identity;
 using Relovia.Api.Features.Notifications;
@@ -360,20 +359,16 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             Path.GetTempPath(),
             "relovia-files-" + Guid.NewGuid().ToString("N"));
 
-        private readonly bool _restricted;
-
         public string StorageRoot => _storageRoot;
 
         public ReloviaApiFactory(
             string connectionString,
             string citiesFile,
-            string admin1File,
-            bool restricted = false)
+            string admin1File)
         {
             _connectionString = connectionString;
             _citiesFile = citiesFile;
             _admin1File = admin1File;
-            _restricted = restricted;
             Directory.CreateDirectory(_storageRoot);
             // Environment variables override appsettings, including the local Development database.
             Environment.SetEnvironmentVariable("ConnectionStrings__Relovia", connectionString);
@@ -387,9 +382,6 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             builder.UseSetting("ConnectionStrings:Relovia", _connectionString);
             builder.UseSetting(GeoNamesCityListSource.CitiesFileKey, _citiesFile);
             builder.UseSetting(GeoNamesCityListSource.Admin1FileKey, _admin1File);
-            // Most tests sign in as arbitrary example.com users, so they run with the app open.
-            builder.UseSetting("Access:Restricted", _restricted ? "true" : "false");
-            builder.UseSetting("Access:AllowedEmails:0", AllowedEmail);
             builder.UseSetting("Storage:Provider", "Local");
             builder.UseSetting("Storage:Local:Root", _storageRoot);
             builder.UseSetting("Reminders:Enabled", "false");
@@ -405,9 +397,6 @@ public sealed partial class RelocationEndpointTests : IClassFixture<PostgresFixt
             {
                 services.RemoveAll<IExchangeRateProvider>();
                 services.AddScoped<IExchangeRateProvider, FakeRateProvider>();
-                services.RemoveAll<IInterestNotifier>();
-                services.AddSingleton<RecordingInterestNotifier>();
-                services.AddSingleton<IInterestNotifier>(provider => provider.GetRequiredService<RecordingInterestNotifier>());
                 services.RemoveAll<INotificationEmailSender>();
                 services.AddSingleton<RecordingNotificationEmailSender>();
                 services.AddSingleton<INotificationEmailSender>(provider => provider.GetRequiredService<RecordingNotificationEmailSender>());

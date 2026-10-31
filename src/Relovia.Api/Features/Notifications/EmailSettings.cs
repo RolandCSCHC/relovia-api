@@ -1,7 +1,7 @@
-namespace Relovia.Api.Features.Access;
+namespace Relovia.Api.Features.Notifications;
 
 /// <summary>
-/// Resend account used to email the developer. Leave <see cref="ApiKey"/> empty to disable email.
+/// Resend account used to email reminders. Leave <see cref="ApiKey"/> empty to disable email.
 /// Mail goes over HTTPS because some hosts, including Render's free tier, block outbound SMTP.
 /// </summary>
 public sealed class EmailSettings

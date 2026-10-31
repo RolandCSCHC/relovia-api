@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Relovia.Api.Common.Security;
-using Relovia.Api.Features.Access;
 
 namespace Relovia.Api.Features.Identity;
 
@@ -30,9 +29,6 @@ public static class GoogleSignIn
             context.Response.Redirect(SignInRedirect.Failure(origin, result.ErrorCode ?? SignInErrors.GoogleFailed));
             return;
         }
-
-        var interest = context.HttpContext.RequestServices.GetRequiredService<InterestService>();
-        await interest.RecordSignInAsync(result.UserId, context.HttpContext.RequestAborted);
 
         context.Principal = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, result.UserId.ToString())],

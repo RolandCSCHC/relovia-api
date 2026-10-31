@@ -2,7 +2,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -14,7 +13,6 @@ using Relovia.Api.Common.OpenApi;
 using Relovia.Api.Common.Persistence;
 using Relovia.Api.Common.Security;
 using Amazon.S3;
-using Relovia.Api.Features.Access;
 using Relovia.Api.Features.Applications;
 using Relovia.Api.Features.Budgets;
 using Relovia.Api.Features.Calendar;
@@ -103,22 +101,13 @@ builder.Services.AddOptions<SessionSettings>()
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IAuthSessionStore, AuthSessionStore>();
 builder.Services.AddScoped<ExternalAccountService>();
-builder.Services.AddOptions<AccessSettings>().Bind(builder.Configuration.GetSection(AccessSettings.SectionName));
 builder.Services.AddOptions<EmailSettings>().Bind(builder.Configuration.GetSection(EmailSettings.SectionName));
-builder.Services.AddSingleton<AccessPolicy>();
-builder.Services.AddHttpClient<IInterestNotifier, ResendInterestNotifier>(client =>
-{
-    client.BaseAddress = new Uri("https://api.resend.com/");
-    client.Timeout = TimeSpan.FromSeconds(10);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.rolandschlosser.dev)");
-});
 builder.Services.AddHttpClient<INotificationEmailSender, ResendNotificationEmailSender>(client =>
 {
     client.BaseAddress = new Uri("https://api.resend.com/");
     client.Timeout = TimeSpan.FromSeconds(10);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("Relovia/1.0 (+https://relovia.rolandschlosser.dev)");
 });
-builder.Services.AddScoped<InterestService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<GeoNamesCityListSource>(client =>
 {
@@ -186,13 +175,7 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
         options.Events.OnRemoteFailure = GoogleSignIn.OnRemoteFailure;
     });
 }
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy(AccessPolicies.Approved, policy => policy
-        .RequireAuthenticatedUser()
-        .AddRequirements(new ApprovedUserRequirement()));
-});
-builder.Services.AddScoped<IAuthorizationHandler, ApprovedUserHandler>();
+builder.Services.AddAuthorization();
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = AntiforgeryCookies.HeaderName;
@@ -229,8 +212,8 @@ builder.Services.AddHealthChecks()
 
 builder.Services.AddControllers(options =>
     {
-        // Every endpoint needs an approved user unless it says [AllowAnonymous].
-        options.Filters.Add(new AuthorizeFilter(AccessPolicies.Approved));
+        // Every endpoint needs a signed-in user unless it says [AllowAnonymous].
+        options.Filters.Add(new AuthorizeFilter());
         options.Filters.Add<ValidateAntiforgeryFilter>();
     })
     .AddJsonOptions(options =>
