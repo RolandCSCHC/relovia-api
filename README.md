@@ -1,8 +1,28 @@
 # relovia-api
 
-HTTP API for Relovia. It owns identity, the database, and Google sign-in. The Angular app never receives a Google access token, refresh token, or ID token.
+I built Relovia for people moving to another city or another country who need the plan in one place. This repository is the HTTP API. It owns Google sign-in, the session, and PostgreSQL. The Angular app is a separate repository, and it never receives a Google access token, refresh token, or ID token.
 
-Setup, configuration, and local commands are in [docs/setup.md](docs/setup.md).
+A person can keep several relocations. Each one stores a name, an origin, a destination, a target date, and a purpose. Domestic or international is computed by comparing the country codes, so that fact stays tied to the places they entered. They review a suggested checklist and confirm the tasks they want. Those tasks then belong to them. The same relocation holds a budget, an inventory, private documents, a calendar, and reminders. An international move also holds homes under comparison and job applications. Export draws a PDF of that relocation when it is requested, and the file is not stored.
+
+The app is [relovia.rolandschlosser.dev](https://relovia.rolandschlosser.dev). This API is [api.relovia.rolandschlosser.dev](https://api.relovia.rolandschlosser.dev). Setup, configuration, and local commands are in [docs/setup.md](docs/setup.md). The model and the HTTP contract are the reference sections below.
+
+## Architecture
+
+I kept a single ASP.NET Core project, `src/Relovia.Api`, and cut it into vertical slices. Identity, relocations, budgets, inventory, documents, calendar, notifications, housing, applications, and export each own their types and services. Shared infrastructure sits in `Common`. A controller is a thin adapter: it reads the signed-in user, calls one feature service, and maps the result onto a status code. `ReloviaDbContext` is the unit of work and the data access layer. Business rules live in the feature services, next to the queries they use, so a rule such as "dependencies cannot cycle" is a method with a unit test and the SQL is still visible beside it.
+
+Google OpenID Connect runs here, and only for the handshake. The callback reads the profile and then drops the Google tokens. The browser session is the HttpOnly cookie `relovia_session`. Its value is a random token, and Postgres stores a hash of that token on an `auth_session` row. Logout sets `revoked_at` and clears the cookie, so a copied cookie fails on the next request. A session has a sliding lifetime and an absolute lifetime, so it cannot be refreshed forever. Mutating requests also present an antiforgery token. Data Protection keys live in Postgres, so a redeploy can still unprotect those cookies. The account key is Google's `sub` claim, unique for the provider, so the same email on a different Google account is a different person.
+
+The cookie is `SameSite=Lax` and host-only. Production uses two names on one parent domain, `relovia.rolandschlosser.dev` and `api.relovia.rolandschlosser.dev`, which makes the browser treat the call as same-site and send the cookie. Localhost ports are the same site as well, so the app on port 4200 and the API on port 5080 follow the production rule. I chose that pair of hostnames because a session cookie set on `onrender.com` for a page on `vercel.app` is a third-party cookie, and Safari blocks those.
+
+Published checklist templates stay immutable. Selection returns the tasks that match the move, deduped by code, and writes nothing. Confirm copies the chosen tasks and their dependencies into rows owned by that relocation, inside one database transaction. Editing a task leaves the template unchanged, and editing a template leaves tasks that were already generated. A dependency cannot point at itself, cannot cross relocations, and cannot form a cycle. Room shopping lists use the same publish-then-copy flow: confirm writes independent inventory items, and a later edit of an item leaves the list alone.
+
+Money stores the amount and the currency that were entered. Totals in the budget currency are computed when the budget is read, from the latest exchange rate, and the stored original is left as entered. Rates come from `open.er-api.com` through `IExchangeRateProvider`, cached in memory. The other external systems sit behind the same kind of port. `IObjectStorage` keeps document bytes in a private directory in development and in a private S3-compatible bucket in production, including Neon Object Storage. A download checks that the signed-in user owns the relocation before the file is opened. Anyone else receives 404, and the store is not read. The response is an attachment, and the storage key stays on the server. `INotificationEmailSender` sends mail through Resend. City names come from the GeoNames list, behind a small catalog.
+
+Reminders run in this process on a `BackgroundService`. The scan stores at most one reminder per user, kind, and source, so a later pass does not create it again. Email uses a transactional outbox: one row per reminder, tried up to five times, never sent again once it has succeeded. The Resend idempotency key is that outbox id.
+
+Schema changes are EF Core migrations only. The process does not migrate on startup. On every push to `main`, GitHub Actions applies pending migrations to Neon through the direct connection, then calls the Render deploy hook. The image is a portable Dockerfile and listens on 8080, or on `PORT` when the host sets it. Unit tests cover the rules. Integration tests start PostgreSQL 18 with Testcontainers and check that one person's relocation, tasks, and files stay invisible to someone else.
+
+Primary keys are UUID v7. Enums are stored as their names. Timestamps are `timestamptz`, calendar dates are `date`, and money is `numeric`. Table and column names are snake_case, and every relationship has an explicit delete behavior. Unexpected failures and validation errors use Problem Details. OpenAPI and Scalar are on in Development, and that document is what the Angular client is generated from.
 
 ## Stack
 
@@ -17,13 +37,11 @@ Setup, configuration, and local commands are in [docs/setup.md](docs/setup.md).
 
 `global.json` requests SDK 10.0.100 and rolls forward to the latest 10.0 patch.
 
-## Shape
+## Features
 
-One project, `src/Relovia.Api`. Feature code lives under `Features`. Cross-cutting code lives under `Common`. Controllers stay thin.
+Feature code lives under `Features`. Cross-cutting code lives under `Common`.
 
-There is no separate Domain, Application, or Infrastructure project, no generic repository, and no ASP.NET Core Identity. `ReloviaDbContext` is the data access layer. Business rules live in feature services.
-
-Current features: `Features/Identity` (`User`, `ExternalLogin`, `AuthSession`) and `Features/Relocations` (`Relocation`, `ChecklistTemplate`, `TaskTemplate`, `RelocationTask`, `TaskDependency`), `Features/Budgets` (`Budget`, `BudgetCategory`, `BudgetEstimate`, `Expense`), `Features/Inventory` (`InventoryItem`, `InventoryListTemplate`, `InventoryTemplateItem`), `Features/Documents` (`Document` and `IObjectStorage`), `Features/Calendar` (`CalendarEvent`), `Features/Notifications` (`NotificationPreference`, `Notification`, `NotificationEmail`), `Features/ExchangeRates` (rate provider and cache), and `Features/Export` (the relocation PDF, which stores nothing).
+`Features/Identity` holds `User`, `ExternalLogin`, and `AuthSession`. `Features/Relocations` holds `Relocation`, `ChecklistTemplate`, `TaskTemplate`, `RelocationTask`, and `TaskDependency`. `Features/Budgets` holds `Budget`, `BudgetCategory`, `BudgetEstimate`, and `Expense`. `Features/Inventory` holds `InventoryItem`, `InventoryListTemplate`, and `InventoryTemplateItem`. `Features/Documents` holds `Document` and `IObjectStorage`. `Features/Calendar` holds `CalendarEvent`. `Features/Notifications` holds `NotificationPreference`, `Notification`, and `NotificationEmail`. `Features/ExchangeRates` is the rate provider and its cache. `Features/Export` draws the relocation PDF and stores nothing. Housing and job applications are `Features/Housing` and `Features/Applications`.
 
 ## Persistence
 
