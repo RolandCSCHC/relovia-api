@@ -36,9 +36,6 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasDefaultValue("en");
 
-        builder.Property(user => user.InterestNotifiedAt)
-            .HasColumnType("timestamptz");
-
         builder.Property(user => user.CreatedAt)
             .HasColumnType("timestamptz");
 

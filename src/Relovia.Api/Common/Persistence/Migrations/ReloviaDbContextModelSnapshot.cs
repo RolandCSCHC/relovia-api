@@ -722,10 +722,6 @@ namespace Relovia.Api.Common.Persistence.Migrations
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
 
-                    b.Property<DateTimeOffset?>("InterestNotifiedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("interest_notified_at");
-
                     b.Property<string>("PreferredCurrency")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
